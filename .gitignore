@@ -1,0 +1,7 @@
+*.json
+*.fir
+*.v
+.bsp/
+.idea/
+target/
+test_run_dir/
