@@ -4,6 +4,9 @@ organization := "top.emptystack"
 version      := "0.1.0-SNAPSHOT"
 scalaVersion := "2.12.12"
 
+lazy val `api-config-chipsalliance` = project in file("api-config-chipsalliance/build-rules/sbt")
+lazy val ousia                      = (project in file(".")).dependsOn(`api-config-chipsalliance`)
+
 libraryDependencies ++= Seq(
   "edu.berkeley.cs" %% "chisel3"    % "3.4.+",
   "edu.berkeley.cs" %% "chiseltest" % "0.3.0" % "test",
