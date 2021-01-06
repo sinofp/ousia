@@ -20,11 +20,10 @@ class RegFile(readPorts: Int) extends Module {
     reg(waddr) := wdata
   }
 
-  for (i <- 0 until readPorts) {
+  for (i <- 0 until readPorts)
     when(raddr(i) === 0.U) {
       rdata(i) := 0.U
     }.otherwise {
       rdata(i) := reg(raddr(i))
     }
-  }
 }
