@@ -47,11 +47,11 @@ object ALU
 
 import ALU._
 
-class ALU(implicit c: Config) extends CoreModule()(c) {
+class ALU(implicit c: Config) extends CoreModule {
   val SZ_DW = 1
   def DW_32 = Bool(false)
   def DW_64 = Bool(true)
-  val io = new Bundle {
+  val io = IO(new Bundle {
     val dw = Bits(INPUT, SZ_DW)
     val fn = Bits(INPUT, SZ_ALU_FN)
     val in2 = UInt(INPUT, xLen)
@@ -59,7 +59,7 @@ class ALU(implicit c: Config) extends CoreModule()(c) {
     val out = UInt(OUTPUT, xLen)
     val adder_out = UInt(OUTPUT, xLen)
     val cmp_out = Bool(OUTPUT)
-  }
+  })
 
   // ADD, SUB
   val in2_inv = Mux(isSub(io.fn), ~io.in2, io.in2).asInstanceOf[UInt]
@@ -97,7 +97,7 @@ class ALU(implicit c: Config) extends CoreModule()(c) {
   io.out := out
   if (xLen > 32) {
     require(xLen == 64)
-    when (io.dw === DW_32) { io.out := Cat(Fill(32, out(31)), out(31,0)) }
+    when (io.dw === DW_32) {io.out := Cat(Fill(32, out(31)), out(31,0))}
   }
 }
 // format: on
