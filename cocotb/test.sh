@@ -2,35 +2,35 @@
 set -euo pipefail
 
 insts=(
-    # beq
-    # bne
-    # blt
-    # bge
-    # bltu
-    # bgeu
-    # jalr
+    beq
+    bne
+    blt
+    bge
+    bltu
+    bgeu
+    jalr
     jal  # test 3
-    # lui
-    # auipc
-    # addi
-    # slli
-    # slti
-    # sltiu
-    # xori
-    # srli
-    # srai
-    # ori
-    # andi
-    # add
-    # sub
-    # sll
-    # slt
-    # sltu
-    # xor
-    # srl
-    # sra
-    # or
-    # and
+    lui
+    auipc
+    addi
+    slli
+    slti
+    sltiu
+    xori
+    srli
+    srai
+    ori
+    andi
+    add
+    sub
+    sll
+    slt
+    sltu
+    xor
+    srl
+    sra
+    or
+    and
     lb  # test 2
     lh  # test 2
     lw  # test 2
@@ -69,10 +69,11 @@ insts=(
 )
 
 STATUS=0
+ISAPATH="/usr/riscv-sifive-elf/share/riscv-tests/isa"
 for inst in "${insts[@]}"; do
     memfile="$inst.verilog"
     if [ ! -e "$memfile" ]; then
-        riscv-sifive-elf-objcopy "/usr/riscv-sifive-elf/share/riscv-tests/isa/rv32ui-p-$inst" -O verilog "$PWD/$memfile"
+        riscv-sifive-elf-objcopy "$ISAPATH/rv32ui-p-$inst" --only-section .text.init -O verilog "$PWD/$memfile"
         sed -i 's|@.*||g' "$memfile"
     fi
     SECONDS=0

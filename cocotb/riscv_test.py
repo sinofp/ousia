@@ -17,7 +17,7 @@ fail_pattern = deque(["0ff0000f", "00018063", "00119193"])
 
 
 @cocotb.test()
-async def test_sw(dut):
+async def test_bge(dut):
     clock = Clock(dut.clk, 1, units="us")  # Create a 1us period clock on port clk
     cocotb.fork(clock.start())  # Start the clock
 
