@@ -1,8 +1,16 @@
+# chisel
 *.json
 *.fir
 *.v
+
+# scala, idea
 .bsp/
 .idea/
 target/
 test_run_dir/
-verilog/
+
+# cocotb
+*.log
+results.xml
+__pycache__/
+sim_build/
