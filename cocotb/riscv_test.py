@@ -10,20 +10,19 @@ def bin2dec(x):
 
 
 pattern = deque(maxlen=3)
-# rg -A6 '<pass>:' rv32ui-p-*
 pass_pattern = deque(["00000513", "00000073", "c0001073"])
-# rg -A6 '<fail>:' rv32ui-p-*
-fail_pattern = deque(["0ff0000f", "00018063", "00119193"])
+fail_pattern = deque(["00018063", "00119193", "0011e193"])
 
 
 @cocotb.test()
-async def test_bge(dut):
+async def test_bne(dut):
     clock = Clock(dut.clk, 1, units="us")  # Create a 1us period clock on port clk
     cocotb.fork(clock.start())  # Start the clock
 
     while True:
-        inst = "{:08x}".format(bin2dec(dut.cpu.inst))
-        if inst != "00000000":  # stall时行插入了空指令
+        if dut.cpu.if_stall == 0:
+        # if 0 == 0:
+            inst = "{:08x}".format(bin2dec(dut.cpu.inst))
             pattern.append(inst)
             asm = run(
                 [
@@ -36,13 +35,19 @@ async def test_bge(dut):
                 stdout=PIPE,
             ).stdout.decode("utf-8")
             print(
-                "pc = {:8x} | inst = {} | asm = {}".format(bin2dec(dut.cpu.pc), inst, asm),
-                end="", # asm有回车
+                "pc = {:8x} | inst = {} | asm = {} | if_stall = {} | mem_stall = {}".format(
+                    bin2dec(dut.cpu.pc),
+                    inst,
+                    asm.replace("\n", ""),
+                    bin2dec(dut.cpu.if_stall),
+                    # bin2dec(dut.cpu.mem_stall),
+                    0,
+                )
             )
         if pattern == pass_pattern:
             break
         assert pattern != fail_pattern, "Failed at test {:d}".format(
-            bin2dec(dut.cpu.rf.reg_3)
+            bin2dec(dut.cpu.rf.reg_3) // 2
         )
         await FallingEdge(dut.clk)
 

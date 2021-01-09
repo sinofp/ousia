@@ -30,7 +30,7 @@ class Naive(implicit c: Config) extends CoreModule {
   val alu       = Module(new ALU)
   val if_stall  = !io.iwb.ack
   val mem_stall = mem_load && !io.dwb.ack
-  val stall     = RegNext(if_stall || mem_stall)
+//  val stall     = RegNext(if_stall || mem_stall)
 
   // IF
   val pc   = RegInit(UInt(32.W), 0.U)
@@ -42,7 +42,7 @@ class Naive(implicit c: Config) extends CoreModule {
   io.iwb.sel   := "b1111".U
   io.iwb.we    := false.B
   io.iwb.wdata := DontCare
-  val inst = Mux(if_stall, 0.U, io.iwb.rdata)
+  val inst = Mux(if_stall, "h00000013".U, io.iwb.rdata)
 
   // ID
   class FirstCtrlSigs extends Bundle {
@@ -132,7 +132,7 @@ class Naive(implicit c: Config) extends CoreModule {
   cs.getElements.reverse zip firstDecoder map { case (data, int) => data := int }
 
   // pc，rf_wdata
-//  jal := cs.fmt === FMT_UJ
+  jal  := cs.fmt === FMT_UJ
   jalr := cs.jalr
 
   val rf = Module(new RegFile(2))
@@ -153,7 +153,7 @@ class Naive(implicit c: Config) extends CoreModule {
       FMT_S  -> SXT(inst(31, 25) ## inst(11, 7)),
       FMT_SB -> SXT(inst(31) ## inst(7) ## inst(30, 25) ## inst(11, 8) ## 0.U),
       FMT_U  -> inst(31, 12) ## 0.U(12.W),
-      FMT_UJ -> SXT(inst(31) ## inst(19, 12) ## inst(20) ## inst(30, 21)),
+      FMT_UJ -> SXT(inst(31) ## inst(19, 12) ## inst(20) ## inst(30, 21) ## 0.U),
     ),
   )
 

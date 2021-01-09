@@ -9,7 +9,7 @@ insts=(
     bltu
     bgeu
     jalr
-    jal  # test 3
+    jal
     lui
     auipc
     addi
