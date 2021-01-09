@@ -10,8 +10,8 @@ import chisel3.util.experimental.BoringUtils
 
 class Naive(implicit c: Config) extends CoreModule {
   val io = IO(new Bundle {
-    val itcm = new ITCMIO
-    val rf   = Output(new RFIO)
+    val iwb = new WishBoneIO
+    val rf  = Output(new RFIO)
   })
 
   io.rf.getElements.foreach(_ := 42.U)
@@ -26,13 +26,19 @@ class Naive(implicit c: Config) extends CoreModule {
   val jalr      = WireInit(Bool(), false.B)
   val mem_out   = Wire(UInt(xLen.W))
   val alu       = Module(new ALU)
+  val if_stall  = !io.iwb.ack
 
   // IF
   val pc   = RegInit(UInt(32.W), 0.U)
   val pcp4 = pc + 4.U
-  pc         := MuxCase(pcp4, Seq(br_taken -> br_target, jal -> (pc + imm), jalr -> (Rrs1 + imm)))
-  io.itcm.pc := pc
-  val inst = io.itcm.inst
+  pc           := MuxCase(pcp4, Seq(if_stall -> pc, br_taken -> br_target, jal -> (pc + imm), jalr -> (Rrs1 + imm)))
+  io.iwb.addr  := pc
+  io.iwb.cyc   := true.B
+  io.iwb.stb   := true.B
+  io.iwb.sel   := "b1111".U
+  io.iwb.we    := false.B
+  io.iwb.wdata := DontCare
+  val inst = Mux(if_stall, 0.U, io.iwb.rdata)
 
   // ID
   class FirstCtrlSigs extends Bundle {
@@ -195,11 +201,6 @@ class DTCM(implicit c: Config) extends CoreModule {
   }
 }
 
-class ITCMIO extends Bundle {
-  val pc   = Output(UInt(32.W))
-  val inst = Input(UInt(32.W))
-}
-
 class RFIO(implicit c: Config) extends CoreBundle {
   val w    = if (rf2Top) xLen.W else 0.W
   val zero = UInt(w)
@@ -234,4 +235,15 @@ class RFIO(implicit c: Config) extends CoreBundle {
   val t4   = UInt(w)
   val t5   = UInt(w)
   val t6   = UInt(w)
+}
+
+class WishBoneIO(implicit c: Config) extends CoreBundle {
+  val addr  = Output(UInt(xLen.W))
+  val wdata = Output(UInt(xLen.W))
+  val sel   = Output(UInt((xLen / 8).W))
+  val we    = Output(Bool())
+  val cyc   = Output(Bool())
+  val stb   = Output(Bool())
+  val rdata = Input(UInt(xLen.W))
+  val ack   = Input(Bool())
 }

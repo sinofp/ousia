@@ -10,14 +10,15 @@ class NaiveTest extends FlatSpec with ChiselScalatestTester with Matchers {
   it should "work" in {
     implicit val c = new Config(new WithRF2Top ++ new NaiveConfig)
     test(new Naive) { c =>
-      c.io.itcm.pc.expect(0.U)
-      c.io.itcm.inst.poke("h00100193".U) // li gp, 1
+      c.io.iwb.ack.poke(true.B)
+      c.io.iwb.addr.expect(0.U)
+      c.io.iwb.rdata.poke("h00100193".U) // li gp, 1
       c.clock.step(1)
-      c.io.itcm.pc.expect(4.U)
+      c.io.iwb.addr.expect(4.U)
       c.io.rf.gp.expect(1.U)
-      c.io.itcm.inst.poke("h00000513".U) // li a0, 0
+      c.io.iwb.rdata.poke("h00000513".U) // li a0, 0
       c.clock.step(1)
-      c.io.itcm.pc.expect(8.U)
+      c.io.iwb.addr.expect(8.U)
       c.io.rf.a0.expect(0.U)
     }
   }

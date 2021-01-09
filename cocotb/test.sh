@@ -75,7 +75,7 @@ for inst in "${insts[@]}"; do
         sed -i 's|@.*||g' "$memfile"
     fi
     SECONDS=0
-    sed -i "s|\".*\"|\"$PWD/$memfile\"|" Top.v
+    sed -i "s|\".*\"|\"$PWD/$memfile\"|" tb.v
     sed -i "s|async def test_.*(dut)|async def test_$inst(dut)|" riscv_test.py
     echo ">>>>>>>>>> $inst"
     make SIM=verilator >"$inst.log"

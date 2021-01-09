@@ -23,12 +23,13 @@ async def test_sw(dut):
     cocotb.fork(clock.start())  # Start the clock
 
     while True:
-        inst = "{:08x}".format(bin2dec(dut.cpu.io_itcm_inst))
-        pattern.append(inst)
+        inst = "{:08x}".format(bin2dec(dut.cpu.inst))
+        if inst != '00000000':  # stall时行插入了空指令
+            pattern.append(inst)
         if pattern == pass_inst:
             break
         await FallingEdge(dut.clk)
-        print("pc is {:8x} inst is {}".format(bin2dec(dut.cpu.pc), inst))
+        print("pc = {:8x} inst = {}".format(bin2dec(dut.cpu.pc), inst))
 
     a7 = dut.cpu.rf.reg_17
     a0 = dut.cpu.rf.reg_10
