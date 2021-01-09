@@ -11,6 +11,7 @@ import chisel3.util.experimental.BoringUtils
 class Naive(implicit c: Config) extends CoreModule {
   val io = IO(new Bundle {
     val iwb = new WishBoneIO
+    val dwb = new WishBoneIO
     val rf  = Output(new RFIO)
   })
 
@@ -24,9 +25,12 @@ class Naive(implicit c: Config) extends CoreModule {
   val imm       = Wire(UInt(xLen.W))
   val jal       = WireInit(Bool(), false.B)
   val jalr      = WireInit(Bool(), false.B)
+  val mem_load  = WireInit(Bool(), false.B)
   val mem_out   = Wire(UInt(xLen.W))
   val alu       = Module(new ALU)
   val if_stall  = !io.iwb.ack
+  val mem_stall = mem_load && !io.dwb.ack
+  val stall     = RegNext(if_stall || mem_stall)
 
   // IF
   val pc   = RegInit(UInt(32.W), 0.U)
@@ -63,8 +67,8 @@ class Naive(implicit c: Config) extends CoreModule {
     BLTU       -> Seq(Y, FMT_SB, Y, N, N, FN_SLTU, N, X, MEM_B),
     BGEU       -> Seq(Y, FMT_SB, Y, N, N, FN_SGEU, N, X, MEM_B),
     JALR       -> Seq(Y, FMT_I, N, Y, N, FN_ADD, N, X, MEM_B),
-    JAL        -> Seq(Y, FMT_UJ, N, Y, N, FN_ADD, N, X, MEM_B),
-    LUI        -> Seq(Y, FMT_U, N, Y, N, FN_ADD, N, X, MEM_B),
+    JAL        -> Seq(Y, FMT_UJ, N, N, N, FN_ADD, N, X, MEM_B),
+    LUI        -> Seq(Y, FMT_U, N, N, Y, FN_ADD, N, X, MEM_B),
     AUIPC      -> Seq(Y, FMT_U, N, N, N, FN_ADD, N, X, MEM_B),
     ADDI       -> Seq(Y, FMT_I, N, N, N, FN_ADD, N, X, MEM_B),
     SLLI       -> Seq(Y, FMT_I, N, N, N, FN_SL, N, X, MEM_B),
@@ -127,7 +131,11 @@ class Naive(implicit c: Config) extends CoreModule {
   val cs                   = Wire(new FirstCtrlSigs) // 按性能讲，是不是一口气decode完更快？但那样代码不是纵向长就是横向长
   cs.getElements.reverse zip firstDecoder map { case (data, int) => data := int }
 
-  val rf                   = Module(new RegFile(2))
+  // pc，rf_wdata
+//  jal := cs.fmt === FMT_UJ
+  jalr := cs.jalr
+
+  val rf = Module(new RegFile(2))
   rf.io.raddr(0) := inst(19, 15)
   rf.io.raddr(1) := inst(24, 20)
 
@@ -135,6 +143,7 @@ class Naive(implicit c: Config) extends CoreModule {
   val Rrs2   = rf.io.rdata(1)
   val alu_fn = cs.alu_fn
 
+  def ZXT(x: UInt, len: Int = 32) = 0.U((len - x.getWidth).W) ## x
   def SXT(x: UInt, len: Int = 32) = Fill(len - x.getWidth, x(x.getWidth - 1)) ## x
   imm := MuxLookup(
     cs.fmt,
@@ -154,12 +163,12 @@ class Naive(implicit c: Config) extends CoreModule {
 
   val bxx = cs.fmt === FMT_SB
 
-  val mem_load  = cs.mem_en && !cs.mem_rw
+  mem_load := cs.mem_en && !cs.mem_rw
   val mem_store = cs.mem_en && cs.mem_rw
   val mem_size  = cs.mem_sz
 
   val sel_rf_wdata =
-    MuxCase(RF_WDATA_ALU, Seq((cs.jalr || cs.fmt === FMT_UJ) -> RF_WDATA_PC4, (cs.fmt === FMT_S) -> RF_WDATA_MEM))
+    MuxCase(RF_WDATA_ALU, Seq((jalr || jal) -> RF_WDATA_PC4, (cs.fmt === FMT_S) -> RF_WDATA_MEM))
 
   // EX
   alu.io.in1 := MuxLookup(sel_alu1, 0.U, Seq(A1_PC -> pc, A1_RS1 -> Rrs1))
@@ -173,32 +182,32 @@ class Naive(implicit c: Config) extends CoreModule {
   br_target := pc + imm
 
   // MEM
-  val dtcm = Module(new DTCM)
-  dtcm.io.addr  := alu.io.out
-  mem_out       := dtcm.io.rdata //todo sh, sb... lh, lb...
-  dtcm.io.wen   := mem_store
-  dtcm.io.wdata := Rrs2
+  io.dwb.addr  := alu.io.out(31, 2) ## "b00".U
+  io.dwb.cyc   := true.B //cs.mem_en
+  io.dwb.stb   := true.B //cs.mem_en
+  // read
+  mem_out      := {
+    val rdata = io.dwb.rdata
+    MuxLookup(
+      cs.mem_sz,
+      rdata,
+      Seq(
+        MEM_H  -> SXT(rdata(15, 0)),
+        MEM_HU -> ZXT(rdata(15, 0)),
+        MEM_B  -> SXT(rdata(7, 0)),
+        MEM_BU -> ZXT(rdata(7, 0)),
+      ),
+    )
+  }
+  // write
+  io.dwb.we    := mem_store
+  io.dwb.sel   := MuxLookup(cs.mem_sz, "b1111".U, Seq(MEM_H -> "b0011".U, MEM_B -> "b0001".U))
+  io.dwb.wdata := Rrs2
 
   // WB
   rf.io.wen   := cs.fmt === FMT_R || cs.fmt === FMT_I || cs.fmt === FMT_U || cs.fmt === FMT_UJ // 反过来？
   rf.io.waddr := inst(11, 7)
   rf.io.wdata := MuxLookup(sel_rf_wdata, alu.io.out, Seq(RF_WDATA_MEM -> mem_out, RF_WDATA_PC4 -> pcp4))
-}
-
-class DTCM(implicit c: Config) extends CoreModule {
-  val io = IO(new Bundle {
-    val addr  = Input(UInt(xLen.W))
-    val wdata = Input(UInt(xLen.W))
-    val wen   = Input(Bool())
-    val rdata = Output(UInt(xLen.W))
-  })
-
-  val mem = Reg(Vec(512, UInt(8.W)))
-
-  io.rdata := mem(io.addr)
-  when(io.wen) {
-    mem(io.addr) := io.wdata
-  }
 }
 
 class RFIO(implicit c: Config) extends CoreBundle {

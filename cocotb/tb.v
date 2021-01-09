@@ -13,11 +13,6 @@ module wb_ram(
 );
 
 reg  [7 :0] mem[16383:0]; // 16KB
-wire [31:0] addr00 = {addr[31:2], 2'b00};
-
-initial begin
-    $readmemh("/home/unv/projs/ousia/cocotb/sw.verilog", mem);
-end
 
 integer i;
 always @(posedge clk) begin
@@ -25,10 +20,10 @@ always @(posedge clk) begin
     rdata <= 32'd42; // 101010，debug用，不知道有没有规定不ack时的rdata一定是全零
     if (cyc & stb & ~ack) begin
 	ack <= 1'b1;
-	rdata <= {mem[addr00 + 3], mem[addr00 + 2], mem[addr00 + 1], mem[addr]};
 	for (i=0; i<4; i++) begin
+	    rdata[8*i +: 8] <= mem[addr + i];
 	    if (we & sel[i]) begin
-		mem[addr00 + i] <= wdata[8*i +: 8];
+		mem[addr + i] <= wdata[8*i +: 8];
 	    end
 	end
     end
@@ -40,37 +35,70 @@ module tb (
     input reset
 );
 
-wire [31:0] addr;
-wire [31:0] wdata;
-wire [3 :0] sel;
-wire        we;
-wire        cyc;
-wire        stb;
-wire [31:0] rdata;
-wire        ack;
+wire [31:0] inst_addr;
+wire [31:0] inst_wdata;
+wire [3 :0] inst_sel;
+wire        inst_we;
+wire        inst_cyc;
+wire        inst_stb;
+wire [31:0] inst_rdata;
+wire        inst_ack;
 
-wb_ram rom (
+wire [31:0] data_addr;
+wire [31:0] data_wdata;
+wire [3 :0] data_sel;
+wire        data_we;
+wire        data_cyc;
+wire        data_stb;
+wire [31:0] data_rdata;
+wire        data_ack;
+
+wb_ram inst_rom (
     .clk(clk),
-    .addr(addr),
-    .wdata(wdata),
-    .sel(sel),
-    .we(we),
-    .cyc(cyc),
-    .stb(stb),
-    .rdata(rdata),
-    .ack(ack)
+    .addr(inst_addr),
+    .wdata(inst_wdata),
+    .sel(inst_sel),
+    .we(inst_we),
+    .cyc(inst_cyc),
+    .stb(inst_stb),
+    .rdata(inst_rdata),
+    .ack(inst_ack)
 );
+
+wb_ram data_rom (
+    .clk(clk),
+    .addr(data_addr),
+    .wdata(data_wdata),
+    .sel(data_sel),
+    .we(data_we),
+    .cyc(data_cyc),
+    .stb(data_stb),
+    .rdata(data_rdata),
+    .ack(data_ack)
+);
+
+initial begin
+    $readmemh("/home/unv/projs/ousia/cocotb/sw.verilog", inst_rom.mem);
+end
 
 Naive cpu(
     .clock(clk),
     .reset(reset),
-    .io_iwb_addr(addr),
-    .io_iwb_wdata(wdata),
-    .io_iwb_sel(sel),
-    .io_iwb_we(we),
-    .io_iwb_cyc(cyc),
-    .io_iwb_stb(stb),
-    .io_iwb_rdata(rdata),
-    .io_iwb_ack(ack)
+    .io_iwb_addr(inst_addr),
+    .io_iwb_wdata(inst_wdata),
+    .io_iwb_sel(inst_sel),
+    .io_iwb_we(inst_we),
+    .io_iwb_cyc(inst_cyc),
+    .io_iwb_stb(inst_stb),
+    .io_iwb_rdata(inst_rdata),
+    .io_iwb_ack(inst_ack),
+    .io_dwb_addr(data_addr),
+    .io_dwb_wdata(data_wdata),
+    .io_dwb_sel(data_sel),
+    .io_dwb_we(data_we),
+    .io_dwb_cyc(data_cyc),
+    .io_dwb_stb(data_stb),
+    .io_dwb_rdata(data_rdata),
+    .io_dwb_ack(data_ack)
 );
 endmodule

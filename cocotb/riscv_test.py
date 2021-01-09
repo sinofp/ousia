@@ -2,19 +2,18 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import FallingEdge
 from collections import deque
-from os import system
+from subprocess import run, PIPE
 
 
 def bin2dec(x):
     return int(str(x.value), 2)
 
 
-# https://github.com/riscv/riscv-test-env/blob/43d3d53809085e2c8f030d72eed1bdf798bfb31a/p/riscv_test.h#L239
-# li      a7,93
-# li      a0,0
-# ecall
-pass_inst = deque(["05d00893", "00000513", "00000073"])
 pattern = deque(maxlen=3)
+# rg -A6 '<pass>:' rv32ui-p-*
+pass_pattern = deque(["00000513", "00000073", "c0001073"])
+# rg -A6 '<fail>:' rv32ui-p-*
+fail_pattern = deque(["0ff0000f", "00018063", "00119193"])
 
 
 @cocotb.test()
@@ -24,14 +23,31 @@ async def test_sw(dut):
 
     while True:
         inst = "{:08x}".format(bin2dec(dut.cpu.inst))
-        if inst != '00000000':  # stall时行插入了空指令
+        if inst != "00000000":  # stall时行插入了空指令
             pattern.append(inst)
-        if pattern == pass_inst:
+            asm = run(
+                [
+                    "rasm2",
+                    "-a",
+                    "riscv",
+                    "-d",
+                    inst[-2:] + inst[-4:-2] + inst[2:4] + inst[:2],  # -e 有问题
+                ],
+                stdout=PIPE,
+            ).stdout.decode("utf-8")
+            print(
+                "pc = {:8x} | inst = {} | asm = {}".format(bin2dec(dut.cpu.pc), inst, asm),
+                end="", # asm有回车
+            )
+        if pattern == pass_pattern:
             break
+        assert pattern != fail_pattern, "Failed at test {:d}".format(
+            bin2dec(dut.cpu.rf.reg_3)
+        )
         await FallingEdge(dut.clk)
-        print("pc = {:8x} inst = {}".format(bin2dec(dut.cpu.pc), inst))
 
     a7 = dut.cpu.rf.reg_17
-    a0 = dut.cpu.rf.reg_10
     assert a7 == 93, "a7 is not 93, a7 is {}".format(bin2dec(a7))
+
+    a0 = dut.cpu.rf.reg_10
     assert a0 == 0, "a0 is not 0, a0 is {}".format(bin2dec(a0))
