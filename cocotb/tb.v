@@ -78,7 +78,7 @@ wb_ram data_rom (
 );
 
 initial begin
-    $readmemh("/home/unv/projs/ousia/cocotb/lb.verilog", inst_rom.mem);
+    $readmemh("/home/unv/projs/ousia/cocotb/lui.verilog", inst_rom.mem);
 end
 
 Naive cpu(

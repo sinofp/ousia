@@ -15,13 +15,16 @@ fail_pattern = deque(["00018063", "00119193", "0011e193"])
 
 
 @cocotb.test()
-async def test_bne(dut):
+async def test_lui(dut):
     clock = Clock(dut.clk, 1, units="us")  # Create a 1us period clock on port clk
     cocotb.fork(clock.start())  # Start the clock
 
+    dut.reset <= 1
+    await FallingEdge(dut.clk)
+    dut.reset <= 0
+
     while True:
-        if dut.cpu.if_stall == 0:
-        # if 0 == 0:
+        if dut.cpu.commit == 1:
             inst = "{:08x}".format(bin2dec(dut.cpu.inst))
             pattern.append(inst)
             asm = run(
@@ -35,13 +38,11 @@ async def test_bne(dut):
                 stdout=PIPE,
             ).stdout.decode("utf-8")
             print(
-                "pc = {:8x} | inst = {} | asm = {} | if_stall = {} | mem_stall = {}".format(
+                "pc = {:8x} | inst = {} | asm = {} | commit = {} ".format(
                     bin2dec(dut.cpu.pc),
                     inst,
                     asm.replace("\n", ""),
-                    bin2dec(dut.cpu.if_stall),
-                    # bin2dec(dut.cpu.mem_stall),
-                    0,
+                    bin2dec(dut.cpu.commit),
                 )
             )
         if pattern == pass_pattern:

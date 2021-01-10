@@ -28,21 +28,27 @@ class Naive(implicit c: Config) extends CoreModule {
   val mem_load  = WireInit(Bool(), false.B)
   val mem_out   = Wire(UInt(xLen.W))
   val alu       = Module(new ALU)
-  val if_stall  = !io.iwb.ack
-  val mem_stall = mem_load && !io.dwb.ack
+//  val if_stall  = !io.iwb.ack
+//  val mem_stall = mem_load && !io.dwb.ack
 //  val stall     = RegNext(if_stall || mem_stall)
+  val iack2     = RegNext(io.iwb.ack, false.B)
+  val dack2     = RegNext(io.dwb.ack, false.B)
+  val commit    = iack2
+  val iread     = RegInit(Bool(), true.B)
+  iread := Mux(commit || io.iwb.ack, !iread, iread)
 
   // IF
   val pc   = RegInit(UInt(32.W), 0.U)
   val pcp4 = pc + 4.U
-  pc           := MuxCase(pcp4, Seq(if_stall -> pc, br_taken -> br_target, jal -> (pc + imm), jalr -> (Rrs1 + imm)))
+  pc           := Mux(commit, MuxCase(pcp4, Seq(br_taken -> br_target, jal -> (pc + imm), jalr -> (Rrs1 + imm))), pc)
   io.iwb.addr  := pc
-  io.iwb.cyc   := true.B
-  io.iwb.stb   := true.B
+  io.iwb.cyc   := iread
+  io.iwb.stb   := iread
   io.iwb.sel   := "b1111".U
   io.iwb.we    := false.B
   io.iwb.wdata := DontCare
-  val inst = Mux(if_stall, "h00000013".U, io.iwb.rdata)
+  val inst = Reg(UInt(32.W))
+  inst := Mux(io.iwb.ack, io.iwb.rdata, "h00000013".U)
 
   // ID
   class FirstCtrlSigs extends Bundle {
@@ -132,7 +138,7 @@ class Naive(implicit c: Config) extends CoreModule {
   cs.getElements.reverse zip firstDecoder map { case (data, int) => data := int }
 
   // pc，rf_wdata
-  jal  := cs.fmt === FMT_UJ
+  jal := cs.fmt === FMT_UJ
   jalr := cs.jalr
 
   val rf = Module(new RegFile(2))
