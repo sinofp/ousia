@@ -2,35 +2,35 @@
 set -euo pipefail
 
 insts=(
-    # beq
-    # bne
-    # blt
-    # bge
-    # bltu
-    # bgeu
-    # jalr
-    # jal
+    beq
+    bne
+    blt
+    bge
+    bltu
+    bgeu
+    jalr
+    jal
     lui
-    # auipc
-    # addi
-    # slli
-    # slti
-    # sltiu
-    # xori
-    # srli
-    # srai
-    # ori
-    # andi
-    # add
-    # sub
-    # sll
-    # slt
-    # sltu
-    # xor
-    # srl
-    # sra
-    # or
-    # and
+    auipc
+    addi
+    slli
+    slti
+    sltiu
+    xori
+    srli
+    srai
+    ori
+    andi
+    add
+    sub
+    sll
+    slt
+    sltu
+    xor
+    srl
+    sra
+    or
+    and
     # lb  # test 2
     # lh  # test 2
     # lw  # test 2

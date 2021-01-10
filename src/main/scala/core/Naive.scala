@@ -25,15 +25,11 @@ class Naive(implicit c: Config) extends CoreModule {
   val imm       = Wire(UInt(xLen.W))
   val jal       = WireInit(Bool(), false.B)
   val jalr      = WireInit(Bool(), false.B)
+  val mem_en    = WireInit(Bool(), false.B)
   val mem_load  = WireInit(Bool(), false.B)
-  val mem_out   = Wire(UInt(xLen.W))
   val alu       = Module(new ALU)
-//  val if_stall  = !io.iwb.ack
-//  val mem_stall = mem_load && !io.dwb.ack
-//  val stall     = RegNext(if_stall || mem_stall)
   val iack2     = RegNext(io.iwb.ack, false.B)
-  val dack2     = RegNext(io.dwb.ack, false.B)
-  val commit    = iack2
+  val commit    = !mem_en && iack2 || mem_en && io.dwb.ack
   val iread     = RegInit(Bool(), true.B)
   iread := Mux(commit || io.iwb.ack, !iread, iread)
 
@@ -48,7 +44,7 @@ class Naive(implicit c: Config) extends CoreModule {
   io.iwb.we    := false.B
   io.iwb.wdata := DontCare
   val inst = Reg(UInt(32.W))
-  inst := Mux(io.iwb.ack, io.iwb.rdata, "h00000013".U)
+  inst := MuxCase("h00000013".U, Seq((mem_en && !io.dwb.ack) -> inst, io.iwb.ack -> io.iwb.rdata))
 
   // ID
   class FirstCtrlSigs extends Bundle {
@@ -137,8 +133,8 @@ class Naive(implicit c: Config) extends CoreModule {
   val cs                   = Wire(new FirstCtrlSigs) // 按性能讲，是不是一口气decode完更快？但那样代码不是纵向长就是横向长
   cs.getElements.reverse zip firstDecoder map { case (data, int) => data := int }
 
-  // pc，rf_wdata
-  jal := cs.fmt === FMT_UJ
+  mem_en := cs.mem_en
+  jal  := cs.fmt === FMT_UJ
   jalr := cs.jalr
 
   val rf = Module(new RegFile(2))
@@ -188,11 +184,11 @@ class Naive(implicit c: Config) extends CoreModule {
   br_target := pc + imm
 
   // MEM
-  io.dwb.addr  := alu.io.out(31, 2) ## "b00".U
-  io.dwb.cyc   := true.B //cs.mem_en
-  io.dwb.stb   := true.B //cs.mem_en
+  io.dwb.addr  := alu.io.out
+  io.dwb.cyc   := cs.mem_en
+  io.dwb.stb   := cs.mem_en
   // read
-  mem_out      := {
+  val mem_out = {
     val rdata = io.dwb.rdata
     MuxLookup(
       cs.mem_sz,
