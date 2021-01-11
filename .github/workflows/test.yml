@@ -1,0 +1,24 @@
+name: Test
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  riscv-tests:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install verilator
+          pip install cocotb
+      - name: Test
+        run: |
+          export PATH=~/.local/bin:$PATH # cocotb
+          sbt run
+          cd cocotb
+          ./test.sh
