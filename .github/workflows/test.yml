@@ -14,11 +14,12 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install verilator
+          sudo apt install verilator radare2
           pip install cocotb
       - name: Test
         run: |
-          export PATH=~/.local/bin:$PATH # cocotb
+          git submodule update --init --depth 1
           sbt run
           cd cocotb
+          export PATH=~/.local/bin:$PATH # cocotb
           ./test.sh
