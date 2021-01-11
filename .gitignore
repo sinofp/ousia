@@ -15,3 +15,6 @@ test_run_dir/
 results.xml
 __pycache__/
 sim_build/
+
+# quartus
+quartus/
