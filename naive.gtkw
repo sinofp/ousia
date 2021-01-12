@@ -1,0 +1,95 @@
+[*]
+[*] GTKWave Analyzer v3.3.108 (w)1999-2020 BSI
+[*] Tue Jan 12 01:48:06 2021
+[*]
+[dumpfile] "/home/unv/projs/ousia/dump.vcd"
+[dumpfile_mtime] "Tue Jan 12 01:33:29 2021"
+[dumpfile_size] 403892
+[savefile] "/home/unv/projs/ousia/naive.gtkw"
+[timestart] 33220
+[size] 1920 983
+[pos] -1 -1
+*-11.000000 34850 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] cocotb_top.
+[treeopen] cocotb_top.soc.
+[treeopen] cocotb_top.soc.cpu.
+[sst_width] 249
+[signals_width] 251
+[sst_expanded] 1
+[sst_vpaned_height] 282
+@28
+cocotb_top.soc.cpu.clock
+@22
+cocotb_top.soc.cpu.pc[31:0]
+cocotb_top.soc.cpu.inst[31:0]
+@c00022
++{zero} cocotb_top.soc.cpu.rf.reg_0[31:0]
+@28
+(0)cocotb_top.soc.cpu.rf.reg_0[31:0]
+(1)cocotb_top.soc.cpu.rf.reg_0[31:0]
+(2)cocotb_top.soc.cpu.rf.reg_0[31:0]
+(3)cocotb_top.soc.cpu.rf.reg_0[31:0]
+(4)cocotb_top.soc.cpu.rf.reg_0[31:0]
+(5)cocotb_top.soc.cpu.rf.reg_0[31:0]
+(6)cocotb_top.soc.cpu.rf.reg_0[31:0]
+(7)cocotb_top.soc.cpu.rf.reg_0[31:0]
+(8)cocotb_top.soc.cpu.rf.reg_0[31:0]
+(9)cocotb_top.soc.cpu.rf.reg_0[31:0]
+(10)cocotb_top.soc.cpu.rf.reg_0[31:0]
+(11)cocotb_top.soc.cpu.rf.reg_0[31:0]
+(12)cocotb_top.soc.cpu.rf.reg_0[31:0]
+(13)cocotb_top.soc.cpu.rf.reg_0[31:0]
+(14)cocotb_top.soc.cpu.rf.reg_0[31:0]
+(15)cocotb_top.soc.cpu.rf.reg_0[31:0]
+(16)cocotb_top.soc.cpu.rf.reg_0[31:0]
+(17)cocotb_top.soc.cpu.rf.reg_0[31:0]
+(18)cocotb_top.soc.cpu.rf.reg_0[31:0]
+(19)cocotb_top.soc.cpu.rf.reg_0[31:0]
+(20)cocotb_top.soc.cpu.rf.reg_0[31:0]
+(21)cocotb_top.soc.cpu.rf.reg_0[31:0]
+(22)cocotb_top.soc.cpu.rf.reg_0[31:0]
+(23)cocotb_top.soc.cpu.rf.reg_0[31:0]
+(24)cocotb_top.soc.cpu.rf.reg_0[31:0]
+(25)cocotb_top.soc.cpu.rf.reg_0[31:0]
+(26)cocotb_top.soc.cpu.rf.reg_0[31:0]
+(27)cocotb_top.soc.cpu.rf.reg_0[31:0]
+(28)cocotb_top.soc.cpu.rf.reg_0[31:0]
+(29)cocotb_top.soc.cpu.rf.reg_0[31:0]
+(30)cocotb_top.soc.cpu.rf.reg_0[31:0]
+(31)cocotb_top.soc.cpu.rf.reg_0[31:0]
+@1401200
+-group_end
+@22
++{ra} cocotb_top.soc.cpu.rf.reg_1[31:0]
++{sp} cocotb_top.soc.cpu.rf.reg_2[31:0]
++{gp} cocotb_top.soc.cpu.rf.reg_3[31:0]
++{tp} cocotb_top.soc.cpu.rf.reg_4[31:0]
++{t0} cocotb_top.soc.cpu.rf.reg_5[31:0]
++{t1} cocotb_top.soc.cpu.rf.reg_6[31:0]
++{t2} cocotb_top.soc.cpu.rf.reg_7[31:0]
++{s0/fp} cocotb_top.soc.cpu.rf.reg_8[31:0]
++{s1} cocotb_top.soc.cpu.rf.reg_9[31:0]
++{a0} cocotb_top.soc.cpu.rf.reg_10[31:0]
++{a1} cocotb_top.soc.cpu.rf.reg_11[31:0]
++{a2} cocotb_top.soc.cpu.rf.reg_12[31:0]
++{a3} cocotb_top.soc.cpu.rf.reg_13[31:0]
++{a4} cocotb_top.soc.cpu.rf.reg_14[31:0]
++{a5} cocotb_top.soc.cpu.rf.reg_15[31:0]
++{a6} cocotb_top.soc.cpu.rf.reg_16[31:0]
++{a7} cocotb_top.soc.cpu.rf.reg_17[31:0]
++{s2} cocotb_top.soc.cpu.rf.reg_18[31:0]
++{s3} cocotb_top.soc.cpu.rf.reg_19[31:0]
++{s4} cocotb_top.soc.cpu.rf.reg_20[31:0]
++{s5} cocotb_top.soc.cpu.rf.reg_21[31:0]
++{s6} cocotb_top.soc.cpu.rf.reg_22[31:0]
++{s7} cocotb_top.soc.cpu.rf.reg_23[31:0]
++{s8} cocotb_top.soc.cpu.rf.reg_24[31:0]
++{s9} cocotb_top.soc.cpu.rf.reg_25[31:0]
++{s10} cocotb_top.soc.cpu.rf.reg_26[31:0]
++{s11} cocotb_top.soc.cpu.rf.reg_27[31:0]
++{t3} cocotb_top.soc.cpu.rf.reg_28[31:0]
++{t4} cocotb_top.soc.cpu.rf.reg_29[31:0]
++{t5} cocotb_top.soc.cpu.rf.reg_30[31:0]
++{t6} cocotb_top.soc.cpu.rf.reg_31[31:0]
+[pattern_trace] 1
+[pattern_trace] 0

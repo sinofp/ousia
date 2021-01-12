@@ -15,11 +15,10 @@ jobs:
         run: |
           sudo apt update
           sudo apt install verilator radare2
-          pip install cocotb
+          sudo pip install cocotb fusesoc
       - name: Test
         run: |
           git submodule update --init --depth 1
           sbt run
-          cd cocotb
-          export PATH=~/.local/bin:$PATH # cocotb
+          fusesoc init -y
           ./test.sh

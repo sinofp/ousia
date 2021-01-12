@@ -7,7 +7,7 @@ object Main extends App {
   @tailrec
   def parse(map: OptionMap, list: List[String]): OptionMap =
     list match {
-      case Nil                                    => Map("dir" -> "cocotb") ++ map
+      case Nil                                    => Map("dir" -> ".") ++ map
       case ("-d" | "--target-dir") :: dir :: tail => parse(map ++ Map("dir" -> dir), tail)
     }
 

@@ -97,8 +97,8 @@ class Naive(implicit c: Config) extends CoreModule {
     LBU        -> Seq(Y, FMT_I, N, N, N, FN_ADD, Y, N, MEM_BU),
     LHU        -> Seq(Y, FMT_I, N, N, N, FN_ADD, Y, N, MEM_HU),
     SB         -> Seq(Y, FMT_S, N, N, N, FN_ADD, Y, Y, MEM_B),
-    SH         -> Seq(Y, FMT_S, N, N, N, FN_ADD, Y, Y, MEM_B),
-    SW         -> Seq(Y, FMT_S, N, N, N, FN_ADD, Y, Y, MEM_B),
+    SH         -> Seq(Y, FMT_S, N, N, N, FN_ADD, Y, Y, MEM_H),
+    SW         -> Seq(Y, FMT_S, N, N, N, FN_ADD, Y, Y, MEM_W),
     FENCE      -> Seq(Y, FMT_WIP, N, N, N, FN_ADD, N, X, MEM_B),
     FENCE_I    -> Seq(Y, FMT_WIP, N, N, N, FN_ADD, N, X, MEM_B),
     AMOADD_W   -> Seq(Y, FMT_WIP, N, N, N, FN_ADD, N, X, MEM_B),
@@ -161,16 +161,17 @@ class Naive(implicit c: Config) extends CoreModule {
 
   val sel_alu1 = MuxCase(A1_RS1, Seq(cs.lui -> A1_ZERO, (cs.fmt === FMT_UJ || cs.fmt === FMT_U && !cs.lui) -> A1_PC))
 
-  val sel_alu2 = MuxCase(A2_RS2, Seq((cs.fmt === FMT_I || cs.fmt === FMT_U || cs.fmt === FMT_UJ) -> A2_IMM))
+  val sel_alu2 =
+    MuxCase(A2_RS2, Seq((cs.fmt === FMT_I || cs.fmt === FMT_U || cs.fmt === FMT_UJ || cs.fmt === FMT_S) -> A2_IMM))
 
-  val bxx = cs.fmt === FMT_SB
+  val bxx      = cs.fmt === FMT_SB
 
   mem_load := cs.mem_en && !cs.mem_rw
   val mem_store = cs.mem_en && cs.mem_rw
   val mem_size  = cs.mem_sz
 
   val sel_rf_wdata =
-    MuxCase(RF_WDATA_ALU, Seq((jalr || jal) -> RF_WDATA_PC4, (cs.fmt === FMT_S) -> RF_WDATA_MEM))
+    MuxCase(RF_WDATA_ALU, Seq((jalr || jal) -> RF_WDATA_PC4, mem_load -> RF_WDATA_MEM))
 
   // EX
   alu.io.in1 := MuxLookup(sel_alu1, 0.U, Seq(A1_PC -> pc, A1_RS1 -> Rrs1))
