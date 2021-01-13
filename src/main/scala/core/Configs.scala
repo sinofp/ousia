@@ -14,6 +14,7 @@ abstract class CoreBundle(implicit val c: Config) extends Bundle with HasCoreCon
 
 case object XLEN   extends Field[Int]
 case object RF2Top extends Field[Boolean](false)
+case object Cache  extends Field[String](default = "None") // 'None 多好，可惜deprecate了
 
 class NaiveConfig
     extends Config((site, here, up) => { case XLEN =>
@@ -22,4 +23,8 @@ class NaiveConfig
 class WithRF2Top
     extends Config((site, here, up) => { case RF2Top =>
       true
+    })
+class WithCacheDirectMap
+    extends Config((site, here, up) => { case Cache =>
+      "DirectMapping"
     })

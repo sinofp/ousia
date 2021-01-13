@@ -19,6 +19,8 @@ class Naive(implicit c: Config) extends CoreModule {
   if (rf2Top)
     io.rf.elements.foreach(p => BoringUtils.addSink(p._2, s"${p._1}"))
 
+  val icache    = Module(if (c(Cache) == "None") new CachePassThrough else new CacheDirectMap(12))
+  val dcache    = Module(if (c(Cache) == "None") new CachePassThrough else new CacheDirectMap(12))
   val br_taken  = WireInit(Bool(), false.B)
   val br_target = Wire(UInt(xLen.W))
   val Rrs1      = Wire(UInt(xLen.W))
@@ -28,23 +30,28 @@ class Naive(implicit c: Config) extends CoreModule {
   val mem_en    = WireInit(Bool(), false.B)
   val mem_load  = WireInit(Bool(), false.B)
   val alu       = Module(new ALU)
-  val iack2     = RegNext(io.iwb.ack, false.B)
-  val commit    = !mem_en && iack2 || mem_en && io.dwb.ack
+  val iack      = icache.io.cpu.resp.valid
+  val dack      = dcache.io.cpu.resp.valid
+  val iack2     = RegNext(iack, false.B)
+  val commit    = !mem_en && iack2 || mem_en && dack
   val iread     = RegInit(Bool(), true.B)
-  iread := Mux(commit || io.iwb.ack, !iread, iread)
+  iread := Mux(commit || iack, !iread, iread)
 
   // IF
-  val pc   = RegInit(UInt(32.W), 0.U)
-  val pcp4 = pc + 4.U
-  pc           := Mux(commit, MuxCase(pcp4, Seq(br_taken -> br_target, jal -> (pc + imm), jalr -> (Rrs1 + imm))), pc)
-  io.iwb.addr  := pc
-  io.iwb.cyc   := iread
-  io.iwb.stb   := iread
-  io.iwb.sel   := "b1111".U
-  io.iwb.we    := false.B
-  io.iwb.wdata := DontCare
+  val icache_req  = icache.io.cpu.req
+  val icache_resp = icache.io.cpu.resp
+  val pc          = RegInit(UInt(32.W), 0.U)
+  val pcp4        = pc + 4.U
+  pc                   := Mux(commit, MuxCase(pcp4, Seq(br_taken -> br_target, jal -> (pc + imm), jalr -> (Rrs1 + imm))), pc)
+  icache.io.cpu.abort  := false.B
+  icache_req.bits.addr := pc
+  icache_req.valid     := iread
+  icache_req.bits.sel  := "b1111".U
+  icache_req.bits.we   := false.B
+  icache_req.bits.data := DontCare
   val inst = Reg(UInt(32.W))
-  inst := MuxCase("h00000013".U, Seq((mem_en && !io.dwb.ack) -> inst, io.iwb.ack -> io.iwb.rdata))
+  inst         := MuxCase("h00000013".U, Seq((mem_en && !dack) -> inst, iack -> icache_resp.bits.data))
+  icache.io.wb <> io.iwb
 
   // ID
   class FirstCtrlSigs extends Bundle {
@@ -185,12 +192,15 @@ class Naive(implicit c: Config) extends CoreModule {
   br_target := pc + imm
 
   // MEM
-  io.dwb.addr  := alu.io.out
-  io.dwb.cyc   := cs.mem_en
-  io.dwb.stb   := cs.mem_en
+  io.dwb              <> dcache.io.wb
+  dcache.io.cpu.abort := false.B
+  val dcache_req  = dcache.io.cpu.req
+  val dcache_resp = dcache.io.cpu.resp
+  dcache_req.bits.addr := alu.io.out
+  dcache_req.valid     := cs.mem_en
   // read
   val mem_out = {
-    val rdata = io.dwb.rdata
+    val rdata = dcache_resp.bits.data
     MuxLookup(
       cs.mem_sz,
       rdata,
@@ -203,9 +213,9 @@ class Naive(implicit c: Config) extends CoreModule {
     )
   }
   // write
-  io.dwb.we    := mem_store
-  io.dwb.sel   := MuxLookup(cs.mem_sz, "b1111".U, Seq(MEM_H -> "b0011".U, MEM_B -> "b0001".U))
-  io.dwb.wdata := Rrs2
+  dcache_req.bits.we   := mem_store
+  dcache_req.bits.sel  := MuxLookup(cs.mem_sz, "b1111".U, Seq(MEM_H -> "b0011".U, MEM_B -> "b0001".U))
+  dcache_req.bits.data := Rrs2
 
   // WB
   rf.io.wen   := cs.fmt === FMT_R || cs.fmt === FMT_I || cs.fmt === FMT_U || cs.fmt === FMT_UJ // 反过来？
