@@ -4,6 +4,13 @@ import chipsalliance.rocketchip.config.Config
 import chisel3._
 import chisel3.util._
 
+class Cache(implicit c: Config) extends CoreModule {
+  val io = IO(new CacheModuleIO)
+
+  val cache = Module(if (c(CacheType) == "None") new CachePassThrough else new CacheDirectMap(12))
+  cache.io <> io
+}
+
 class CacheReq(implicit c: Config) extends CoreBundle {
   val addr = UInt(xLen.W)
   val data = UInt(xLen.W)
@@ -15,17 +22,19 @@ class CacheResp(implicit c: Config) extends CoreBundle {
   val data = UInt(xLen.W)
 }
 
-class CacheIO(implicit val c: Config) extends Bundle {
+class CacheIO(implicit c: Config) extends CoreBundle {
   val abort = Input(Bool())
   val req   = Flipped(Valid(new CacheReq))
   val resp  = Valid(new CacheResp)
 }
 
+class CacheModuleIO(implicit c: Config) extends CoreBundle {
+  val cpu = new CacheIO
+  val wb  = new WishBoneIO
+}
+
 class CachePassThrough(implicit c: Config) extends CoreModule {
-  val io = IO(new Bundle {
-    val cpu = new CacheIO
-    val wb  = new WishBoneIO
-  })
+  val io = IO(new CacheModuleIO)
 
   io.wb.cyc             := io.cpu.req.valid
   io.wb.stb             := io.cpu.req.valid
@@ -38,13 +47,9 @@ class CachePassThrough(implicit c: Config) extends CoreModule {
 }
 
 class CacheDirectMap(val c_index: Int)(implicit c: Config) extends CoreModule {
-  val io = IO(new Bundle {
-    val cpu = new CacheIO
-    val wb  = new WishBoneIO
-  })
+  val io = IO(new CacheModuleIO)
 
   val t_width  = xLen - c_index - 2 // 1 block = 4 byte
-//  val v = RegInit(0.U((1 << c_index).W))
   val validMem = SyncReadMem(1 << c_index, Bool())
   val tagMem   = SyncReadMem(1 << c_index, UInt(t_width.W))
   val dataMem  = SyncReadMem(1 << c_index, Vec(4, UInt(8.W)))
@@ -61,7 +66,6 @@ class CacheDirectMap(val c_index: Int)(implicit c: Config) extends CoreModule {
     validMem.write(index, true.B)
     tagMem.write(index, tag)
     val wdata = Wire(Vec(4, UInt(8.W)))
-//    wdata := io.cpu.req.bits.data
     for (i <- 0 until 4)
       wdata(i) := c_din(((1 + i) * 8) - 1, i * 8)
     dataMem.write(index, wdata, io.cpu.req.bits.sel.asBools)

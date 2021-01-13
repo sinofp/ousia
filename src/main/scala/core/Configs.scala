@@ -12,9 +12,9 @@ trait HasCoreConfigs {
 abstract class CoreModule(implicit val c: Config) extends Module with HasCoreConfigs
 abstract class CoreBundle(implicit val c: Config) extends Bundle with HasCoreConfigs
 
-case object XLEN   extends Field[Int]
-case object RF2Top extends Field[Boolean](false)
-case object Cache  extends Field[String](default = "None") // 'None 多好，可惜deprecate了
+case object XLEN      extends Field[Int]
+case object RF2Top    extends Field[Boolean](false)
+case object CacheType extends Field[String](default = "None") // 'None 多好，可惜deprecate了
 
 class NaiveConfig
     extends Config((site, here, up) => { case XLEN =>
@@ -25,6 +25,6 @@ class WithRF2Top
       true
     })
 class WithCacheDirectMap
-    extends Config((site, here, up) => { case Cache =>
+    extends Config((site, here, up) => { case CacheType =>
       "DirectMapping"
     })

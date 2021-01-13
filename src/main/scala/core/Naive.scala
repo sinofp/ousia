@@ -19,8 +19,8 @@ class Naive(implicit c: Config) extends CoreModule {
   if (rf2Top)
     io.rf.elements.foreach(p => BoringUtils.addSink(p._2, s"${p._1}"))
 
-  val icache    = Module(if (c(Cache) == "None") new CachePassThrough else new CacheDirectMap(12))
-  val dcache    = Module(if (c(Cache) == "None") new CachePassThrough else new CacheDirectMap(12))
+  val icache    = Module(new Cache)
+  val dcache    = Module(new Cache)
   val br_taken  = WireInit(Bool(), false.B)
   val br_target = Wire(UInt(xLen.W))
   val Rrs1      = Wire(UInt(xLen.W))
