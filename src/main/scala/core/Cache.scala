@@ -66,15 +66,31 @@ class CacheDirectMap(val c_index: Int)(implicit c: Config) extends CoreModule {
   val dirty   = dirtyReg(index)
   val tagOut  = tagMem.read(index)
   val dataOut = dataMem.read(index); dataOut suggestName "dataOut"
+  val hit     = valid && tag === tagOut
 
-  val hit = valid && tag === tagOut
+  def genDataBySel(mem_data: UInt): UInt = {
+    val cpu_data = io.cpu.req.bits.data
+    MuxLookup(
+      io.cpu.req.bits.sel,
+      cpu_data,
+      Seq(
+        // 给这玩意整个函数？
+        "b0011".U -> mem_data(31, 16) ## cpu_data(15, 0),
+        "b1100".U -> cpu_data(31, 16) ## mem_data(15, 0),
+        "b1000".U -> cpu_data(31, 24) ## mem_data(23, 0),
+        "b0100".U -> mem_data(31, 24) ## cpu_data(23, 16) ## mem_data(15, 0),
+        "b0010".U -> mem_data(31, 16) ## cpu_data(15, 8) ## mem_data(7, 0),
+        "b0001".U -> mem_data(31, 8) ## cpu_data(7, 0),
+      ),
+    )
+  }
 
   val mem_req_valid = RegInit(false.B) // 要记着几个周期，所以不能是Wire
   io.wb.cyc   := mem_req_valid
   io.wb.stb   := mem_req_valid
   io.wb.addr  := io.cpu.req.bits.addr
   io.wb.we    := false.B
-  io.wb.sel   := io.cpu.req.bits.sel
+  io.wb.sel   := "b1111".U
   io.wb.wdata := dataOut // 要写就只有写脏的数据，这个是dataOut
 
   io.cpu.resp.valid     := false.B
@@ -91,7 +107,7 @@ class CacheDirectMap(val c_index: Int)(implicit c: Config) extends CoreModule {
           // write hit
           // tag，valid不用动，变dirty
           dirtyReg := dirtyReg.bitSet(index, true.B)
-          dataMem.write(index, io.cpu.req.bits.data)
+          dataMem.write(index, genDataBySel(dataOut))
           //不在这时写，等它换出时才写（write back）
         }
         state             := sIdle
@@ -121,10 +137,10 @@ class CacheDirectMap(val c_index: Int)(implicit c: Config) extends CoreModule {
     is(sAlloc) {
       // 读的请求在sCompareTag发出了，这里循环等ack
       when(io.wb.ack) {
-        state := sCompareTag
+        state         := sCompareTag
         // 之所以写Cache也要读，因为可能只写一部分（sb/sh...）。另外之后升级组相联时要一下读一组，只写其中一块。
         // 所以未名中不能直接写，得先读再写
-        dataMem.write(index, Mux(io.cpu.req.bits.we, io.cpu.req.bits.data, io.wb.rdata))
+        dataMem.write(index, Mux(io.cpu.req.bits.we, genDataBySel(io.wb.rdata), io.wb.rdata))
         mem_req_valid := false.B
       }
     }
@@ -137,5 +153,4 @@ class CacheDirectMap(val c_index: Int)(implicit c: Config) extends CoreModule {
       }
     }
   }
-//  printf("state = %d, hit = %b, ack = %b, cyc = %b, cpu_resp_valid = %b\n", state, hit, io.wb.ack, io.wb.cyc, io.cpu.resp.valid)
 }

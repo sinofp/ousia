@@ -215,26 +215,54 @@ class Naive(implicit c: Config) extends CoreModule {
   dcache.io.cpu.abort := false.B
   val dcache_req  = dcache.io.cpu.req
   val dcache_resp = dcache.io.cpu.resp
-  dcache_req.bits.addr := alu.io.out
+  dcache_req.bits.addr := alu.io.out(31, 2) ## 0.U(2.W)
   dcache_req.valid     := cs.mem_en
+  // 这玩意写进decode里？还是整个LSU出来
+  val dcache_sel = MuxCase(
+    "b1111".U,
+    Seq(
+      ((cs.mem_sz === MEM_HU || cs.mem_sz === MEM_H) && !alu.io.out(1))           -> "b0011".U,
+      ((cs.mem_sz === MEM_HU || cs.mem_sz === MEM_H) && alu.io.out(1))            -> "b1100".U,
+      ((cs.mem_sz === MEM_BU || cs.mem_sz === MEM_B) && alu.io.out(1, 0) === 0.U) -> "b0001".U,
+      ((cs.mem_sz === MEM_BU || cs.mem_sz === MEM_B) && alu.io.out(1, 0) === 1.U) -> "b0010".U,
+      ((cs.mem_sz === MEM_BU || cs.mem_sz === MEM_B) && alu.io.out(1, 0) === 2.U) -> "b0100".U,
+      ((cs.mem_sz === MEM_BU || cs.mem_sz === MEM_B) && alu.io.out(1, 0) === 3.U) -> "b1000".U,
+    ),
+  )
   // read
   val mem_out = {
     val rdata = dcache_resp.bits.data
-    MuxLookup(
-      cs.mem_sz,
+    MuxCase(
       rdata,
       Seq(
-        MEM_H  -> SXT(rdata(15, 0)),
-        MEM_HU -> ZXT(rdata(15, 0)),
-        MEM_B  -> SXT(rdata(7, 0)),
-        MEM_BU -> ZXT(rdata(7, 0)),
+        (cs.mem_sz === MEM_HU && dcache_sel === "b0011".U) -> ZXT(rdata(15, 0)),
+        (dcache_sel === "b0011".U)                         -> SXT(rdata(15, 0)),
+        (cs.mem_sz === MEM_HU && dcache_sel === "b1100".U) -> ZXT(rdata(31, 16)),
+        (dcache_sel === "b1100".U)                         -> SXT(rdata(31, 16)),
+        (cs.mem_sz === MEM_BU && dcache_sel === "b0001".U) -> ZXT(rdata(7, 0)),
+        (dcache_sel === "b0001".U)                         -> SXT(rdata(7, 0)),
+        (cs.mem_sz === MEM_BU && dcache_sel === "b0010".U) -> ZXT(rdata(15, 8)),
+        (dcache_sel === "b0010".U)                         -> SXT(rdata(15, 8)),
+        (cs.mem_sz === MEM_BU && dcache_sel === "b0100".U) -> ZXT(rdata(23, 16)),
+        (dcache_sel === "b0100".U)                         -> SXT(rdata(23, 16)),
+        (cs.mem_sz === MEM_BU && dcache_sel === "b1000".U) -> ZXT(rdata(31, 24)),
+        (dcache_sel === "b1000".U)                         -> SXT(rdata(31, 24)),
       ),
     )
   }
   // write
-  dcache_req.bits.we   := mem_store
-  dcache_req.bits.sel  := MuxLookup(cs.mem_sz, "b1111".U, Seq(MEM_H -> "b0011".U, MEM_B -> "b0001".U))
-  dcache_req.bits.data := Rrs2
+  dcache_req.bits.we := mem_store
+  dcache_req.bits.sel  := dcache_sel
+  dcache_req.bits.data := MuxLookup(
+    dcache_sel,
+    Rrs2,
+    Seq(
+      "b1100".U -> Rrs2(15, 0) ## 0.U(16.W),
+      "b0010".U -> 0.U(16.W) ## Rrs2(7, 0) ## 0.U(8.W),
+      "b0100".U -> 0.U(8.W) ## Rrs2(7, 0) ## 0.U(16.W),
+      "b1000".U -> Rrs2(7, 0) ## 0.U(24.W),
+    ),
+  )
 
   // WB
   val csr = Module(new CSR)
