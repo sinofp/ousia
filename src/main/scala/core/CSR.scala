@@ -5,7 +5,7 @@ import chisel3._
 import chisel3.util._
 import Consts._
 
-class CSRIO(mxLen: Int)(implicit c: Config) extends CoreBundle {
+class CSRIO(val mxLen: Int)(implicit c: Config) extends CoreBundle {
   val csr     = Input(UInt(12.W))
   val rs1IsX0 = Input(Bool())
   val rdIsX0  = Input(Bool())
