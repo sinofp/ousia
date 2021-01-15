@@ -40,11 +40,14 @@ object Consts {
 
   val SZ_CSR_CMD = 3
   val CSR_CMD_N  = 0.U
-  val CSR_CMD_R  = 2.U
-  val CSR_CMD_I  = 4.U // interrupt?
+  val CSR_CMD_P  = 4.U // interrupt?
   val CSR_CMD_W  = 5.U
   val CSR_CMD_S  = 6.U
   val CSR_CMD_C  = 7.U
+
+  val PRV_U = "b00".U
+  val PRV_S = "b01".U
+  val PRV_M = "b11".U
 
   def X = BitPat("b?")
   def N = BitPat("b0")

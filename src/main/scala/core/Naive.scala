@@ -121,11 +121,11 @@ class Naive(implicit c: Config) extends CoreModule {
     AMOSWAP_W  -> unimpl(),
     LR_W       -> unimpl(),
     SC_W       -> unimpl(),
-    ECALL      -> unimpl(),
-    EBREAK     -> unimpl(),
+    ECALL      -> Seq(Y, FMT_IC, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_P),
+    EBREAK     -> Seq(Y, FMT_IC, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_P),
     URET       -> unimpl(),
     SRET       -> unimpl(),
-    MRET       -> unimpl(),
+    MRET       -> Seq(Y, FMT_IC, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_P),
     DRET       -> unimpl(),
     SFENCE_VMA -> unimpl(),
     WFI        -> unimpl(),
@@ -266,11 +266,21 @@ class Naive(implicit c: Config) extends CoreModule {
 
   // WB
   val csr = Module(new CSR)
-  csr.io.cmd     := cs.csr_cmd
-  csr.io.rdIsX0  := !rd.orR
-  csr.io.rs1IsX0 := !rs1.orR // 这个不只代表rs1不是x0，也意味着CSR??I的uimm不是0
-  csr.io.csr     := inst(31, 20)
-  csr.io.in      := alu.io.out
+  csr.io.pc        := pc
+  csr.io.inst      := inst
+  csr.io.inst_ilgl := !cs.legal
+  csr.io.inst_ret  := commit
+  csr.io.mem_addr  := alu.io.out
+  csr.io.mem_en    := cs.mem_en
+  csr.io.mem_rw    := cs.mem_rw
+  csr.io.mem_sz    := cs.mem_sz
+  csr.io.cmd       := cs.csr_cmd
+  csr.io.rdIsX0    := !rd.orR
+  csr.io.rs1IsX0   := !rs1.orR // 这个不只代表rs1不是x0，也意味着CSR??I的uimm不是0
+  csr.io.csr       := inst(31, 20)
+  csr.io.in        := alu.io.out
+  csr.io.except    := DontCare // todo
+  csr.io.mtvec     := DontCare
 
   rf.io.wen   := cs.fmt === FMT_R || cs.fmt === FMT_I || cs.fmt === FMT_U || cs.fmt === FMT_UJ // 反过来？
   rf.io.waddr := rd
