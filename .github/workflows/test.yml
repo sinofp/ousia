@@ -16,9 +16,11 @@ jobs:
           sudo apt update
           sudo apt install verilator radare2
           sudo pip install cocotb-test fusesoc pytest-xdist[psutil]
-      - name: Test
+      - name: Prepare Verilog
         run: |
           git submodule update --init --depth 1
           sbt run
           fusesoc init -y
-          pytest -o log_cli=True --log-level=ERROR test.py --numprocesses auto
+          fusesoc --cores-root=. run ousia
+      - name: Test
+        run: pytest -o log_cli=True --log-level=ERROR test.py --numprocesses auto
