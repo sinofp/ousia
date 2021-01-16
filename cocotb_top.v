@@ -73,7 +73,7 @@ module cocotb_top (
   );
 
   initial begin
-    $readmemh("/home/unv/projs/ousia/meminit/sw.verilog", ram.mem);
+    $readmemh("", ram.mem);
   end
 
   naive_soc soc (

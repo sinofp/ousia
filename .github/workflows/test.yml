@@ -15,10 +15,10 @@ jobs:
         run: |
           sudo apt update
           sudo apt install verilator radare2
-          sudo pip install cocotb fusesoc
+          sudo pip install cocotb-test fusesoc pytest-xdist[psutil]
       - name: Test
         run: |
           git submodule update --init --depth 1
           sbt run
           fusesoc init -y
-          ./test.sh
+          pytest -o log_cli=True --log-level=ERROR test.py --numprocesses auto

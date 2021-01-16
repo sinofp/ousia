@@ -15,7 +15,7 @@ fail_pattern = deque(["00018063", "00119193", "0011e193"])
 
 
 @cocotb.test()
-async def test_sw(dut):
+async def riscv_test(dut):
     clock = Clock(dut.clk, 1, units="ns")  # Create a 1ns period clock on port clk
     cocotb.fork(clock.start())  # Start the clock
 
@@ -25,8 +25,11 @@ async def test_sw(dut):
 
     cpu = dut.soc.cpu
 
+    cnt = 0
+
     while True:
         if cpu.commit == 1:
+            cnt = 0
             inst = "{:08x}".format(bin2dec(cpu.inst))
             pattern.append(inst)
             asm = run(
@@ -47,6 +50,9 @@ async def test_sw(dut):
                     bin2dec(cpu.commit),
                 )
             )
+        else:
+            cnt += 1
+            assert cnt != 100, "Stucked!"
         if pattern == pass_pattern:
             break
         assert pattern != fail_pattern, "Failed at test {:d}".format(
