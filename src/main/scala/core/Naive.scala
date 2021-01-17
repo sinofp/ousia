@@ -36,13 +36,21 @@ class Naive(implicit c: Config) extends CoreModule {
   val commit    = !mem_en && iack2 || mem_en && dack
   val iread     = RegInit(Bool(), true.B)
   iread := Mux(commit || iack, !iread, iread)
+  val xcpt  = WireInit(Bool(), false.B)
+  val xret  = WireInit(Bool(), false.B)
+  val mtvec = Wire(UInt(xLen.W))
+  val mepc  = Wire(UInt(xLen.W))
 
   // IF
   val icache_req  = icache.io.cpu.req
   val icache_resp = icache.io.cpu.resp
   val pc          = RegInit(UInt(32.W), 0.U)
   val pcp4        = pc + 4.U
-  pc                   := Mux(commit, MuxCase(pcp4, Seq(br_taken -> br_target, jal -> (pc + imm), jalr -> (Rrs1 + imm))), pc)
+  pc                   := Mux(
+    commit,
+    MuxCase(pcp4, Seq(br_taken -> br_target, jal -> (pc + imm), jalr -> (Rrs1 + imm), xcpt -> mtvec, xret -> mepc)),
+    pc,
+  )
   icache.io.cpu.abort  := false.B
   icache_req.bits.addr := pc
   icache_req.valid     := iread
@@ -137,7 +145,7 @@ class Naive(implicit c: Config) extends CoreModule {
     CSRRCI     -> Seq(Y, FMT_ICI, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_C),
   )
 
-  val default      = unimpl(X)
+  val default      = unimpl(N)
   val firstDecoder = DecodeLogic(inst, default, table)
   val cs           = Wire(new FirstCtrlSigs) // 按性能讲，是不是一口气decode完更快？但那样代码不是纵向长就是横向长
   cs.getElements.reverse zip firstDecoder map { case (data, int) => data := int }
@@ -277,12 +285,13 @@ class Naive(implicit c: Config) extends CoreModule {
   csr.io.cmd       := cs.csr_cmd
   csr.io.rdIsX0    := !rd.orR
   csr.io.rs1IsX0   := !rs1.orR // 这个不只代表rs1不是x0，也意味着CSR??I的uimm不是0
-  csr.io.csr       := inst(31, 20)
   csr.io.in        := alu.io.out
-  csr.io.except    := DontCare // todo
-  csr.io.mtvec     := DontCare
+  xcpt             := csr.io.xcpt
+  mtvec            := csr.io.mtvec
+  xret             := csr.io.xret
+  mepc             := csr.io.mepc
 
-  rf.io.wen   := cs.fmt === FMT_R || cs.fmt === FMT_I || cs.fmt === FMT_U || cs.fmt === FMT_UJ // 反过来？
+  rf.io.wen   := cs.fmt =/= FMT_S && cs.fmt =/= FMT_SB && cs.fmt =/= FMT_WIP
   rf.io.waddr := rd
   rf.io.wdata := MuxLookup(
     sel_rf_wdata,

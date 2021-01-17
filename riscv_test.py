@@ -10,7 +10,7 @@ def bin2dec(x):
 
 
 pattern = deque(maxlen=3)
-pass_pattern = deque(["00000513", "00000073", "c0001073"])
+pass_pattern = deque(["05d00893", "00000513", "00000073"])
 fail_pattern = deque(["00018063", "00119193", "0011e193"])
 
 
@@ -43,11 +43,17 @@ async def riscv_test(dut):
                 stdout=PIPE,
             ).stdout.decode("utf-8")
             print(
-                "pc = {:8x} | inst = {} | asm = {} | commit = {} ".format(
+                "pc = {:8x} ({}) {}|mscratch = {}|csr_in = {}|csr_out = {}|csr.wdata = {}|a1 = {}|rf_wdata = {}|wen = {}".format(
                     bin2dec(cpu.pc),
                     inst,
                     asm.replace("\n", ""),
-                    bin2dec(cpu.commit),
+                    bin2dec(cpu.csr.mscratch),
+                    bin2dec(cpu.csr.io_in),
+                    bin2dec(cpu.csr.io_out),
+                    bin2dec(cpu.csr.wdata),
+                    bin2dec(cpu.rf.reg_11),
+                    bin2dec(cpu.rf.io_wdata),
+                    bin2dec(cpu.rf.io_wen),
                 )
             )
         else:

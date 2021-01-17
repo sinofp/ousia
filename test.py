@@ -10,15 +10,15 @@ if "SIM" not in environ:
 @pytest.mark.parametrize(
     "inst",
     [
-        # "rv32mi-p-breakpoint",
-        # "rv32mi-p-csr",
-        # "rv32mi-p-illegal",
+        # "rv32mi-p-breakpoint", # 其实tdata那些没实现……
+        "rv32mi-p-csr",
+        # "rv32mi-p-illegal", # j 0
         # "rv32mi-p-ma_addr",
         # "rv32mi-p-ma_fetch",
-        # "rv32mi-p-mcsr",
-        # "rv32mi-p-sbreak",
-        # "rv32mi-p-scall",
-        # "rv32mi-p-shamt",
+        "rv32mi-p-mcsr",
+        "rv32mi-p-sbreak",
+        # "rv32mi-p-scall", # write_tohost，spike也在这死循环
+        # "rv32mi-p-shamt", # test 3
         "rv32ui-p-add",
         "rv32ui-p-addi",
         "rv32ui-p-and",

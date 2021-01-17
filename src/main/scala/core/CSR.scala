@@ -15,14 +15,15 @@ class CSRIO(val mxLen: Int)(implicit c: Config) extends CoreBundle {
   val mem_en    = Input(Bool())
   val mem_rw    = Input(Bool())
   val mem_sz    = Input(UInt(SZ_MEM_SZ.W))
-  val csr       = Input(UInt(12.W))
   val rs1IsX0   = Input(Bool())
   val rdIsX0    = Input(Bool())
   val cmd       = Input(UInt(SZ_CSR_CMD.W))
   val in        = Input(UInt(mxLen.W))
   val out       = Output(UInt(mxLen.W))
-  val except    = Output(Bool())
-  val mtvec     = Output(Bool())
+  val xcpt      = Output(Bool())
+  val mtvec     = Output(UInt(xLen.W))
+  val xret      = Output(Bool())
+  val mepc      = Output(UInt(xLen.W))
 }
 
 class CSR(implicit c: Config) extends CoreModule {
@@ -58,16 +59,16 @@ class CSR(implicit c: Config) extends CoreModule {
 
   // misc
   // BundleLiteral不顶用
-  when(reset.asBool) {
+  withReset(reset) {
     mstatus.mie := true.B
     mie.mtie    := true.B
     mie.meie    := true.B
     mie.msie    := true.B
   }
-  io.mtvec                  := mtvec
   when(io.inst_ret)(instret := instret + 1.U)
   time                      := time + 1.U // cycle?
   cycle                     := cycle + 1.U
+  val csr_addr = io.inst(31, 20)
 
   // interrupt/exception
   val misalignedLoad  = io.mem_en && !io.mem_rw && MuxLookup(
@@ -81,12 +82,16 @@ class CSR(implicit c: Config) extends CoreModule {
     Seq(MEM_H -> io.mem_addr(0), MEM_W -> io.mem_addr(1, 0).orR),
   )
   val misalignedFetch = io.pc(1, 0).orR // C
-  val timerInt        = time >= timecmp
-  val isEcall         = io.cmd === CSR_CMD_P && !io.csr(0) && !io.csr(8)
-  val isEbreak        = io.cmd === CSR_CMD_P && io.csr(0) && !io.csr(8)
-  val isRet           = io.cmd === CSR_CMD_P && !io.csr(0) && io.csr(8)
+  val timerInt        = false.B         //time >= timecmp
+  val isEcall         = io.cmd === CSR_CMD_P && !csr_addr(0) && !csr_addr(8)
+  val isEbreak        = io.cmd === CSR_CMD_P && csr_addr(0) && !csr_addr(8)
+  val isXret          = io.cmd === CSR_CMD_P && !csr_addr(0) && csr_addr(8)
 
-  io.except := mstatus.mie && (mie.mtie && timerInt || (mie.msie && (misalignedFetch || misalignedLoad || misalignedStore)))
+  // io
+  io.xcpt  := mstatus.mie && (mie.mtie && timerInt || (mie.msie && (io.inst_ilgl || misalignedFetch || misalignedLoad || misalignedStore || isEcall || isEbreak)))
+  io.xret  := isXret
+  io.mtvec := mtvec
+  io.mepc  := mepc
 
   // read
   val csrFile    = Seq(
@@ -113,14 +118,14 @@ class CSR(implicit c: Config) extends CoreModule {
   val cmd_w      = io.cmd === CSR_CMD_W
   val cmd_s_or_c = io.cmd === CSR_CMD_S || io.cmd === CSR_CMD_C
   val ren        = cmd_s_or_c || cmd_w && !io.rdIsX0 // 不过有必要么？读取唯一的副作用就是写寄存器堆，rd == x0，本来也没法写啊？
-  io.out := Mux(ren, Lookup(io.csr, 0.U, csrFile), 0.U)
+  io.out := Mux(ren, Lookup(csr_addr, 0.U, csrFile), 0.U)
 
   // write
   val wen   = cmd_w || cmd_s_or_c && !io.rs1IsX0
   val wdata =
     MuxLookup(io.cmd, 0.U, Seq(CSR_CMD_W -> io.in, CSR_CMD_S -> (io.out | io.in), CSR_CMD_C -> (io.out & ~io.in)))
 
-  when(io.except) {
+  when(io.xcpt) {
     mepc         := io.pc
     // output mtvec, pc := mtvec
     // todo 别忘了中断时最高位是1
@@ -150,26 +155,26 @@ class CSR(implicit c: Config) extends CoreModule {
     mstatus.mpie := mstatus.mie
     mstatus.mpp  := PRV
     PRV          := PRV_M
-  }.elsewhen(isRet) {
+  }.elsewhen(isXret) {
     // pc设为epc
     mstatus.mie := mstatus.mpie
     PRV         := mstatus.mpp
   }.elsewhen(wen) {
     // 抽象出个方法？
-    when(io.csr === CSRs.mscratch.U)(mscratch := wdata)
-      .elsewhen(io.csr === CSRs.mstatus.U)(mstatus := wdata.asTypeOf(new MStatus))
-      .elsewhen(io.csr === CSRs.mie.U)(mie := wdata.asTypeOf(new Mie(mxLen)))
-      .elsewhen(io.csr === CSRs.mtvec.U)(mtvec := wdata)
-      .elsewhen(io.csr === CSRs.mepc.U)(mepc := wdata)
-      .elsewhen(io.csr === CSRs.mcause.U)(mcause := wdata)
-      .elsewhen(io.csr === CSRs.mtval.U)(mtval := wdata)
-      .elsewhen(io.csr === CSRs.mip.U)(mip := wdata.asTypeOf(new Mip(mxLen)))
-      .elsewhen(io.csr === CSRs.time.U)(time := time.highHalf ## wdata)
-      .elsewhen(io.csr === CSRs.timeh.U)(time := wdata ## time.lowHalf)
-      .elsewhen(io.csr === CSRs.mcycle.U)(cycle := cycle.highHalf ## wdata)
-      .elsewhen(io.csr === CSRs.mcycleh.U)(cycle := wdata ## cycle.lowHalf)
-      .elsewhen(io.csr === CSRs.minstret.U)(instret := instret.highHalf ## wdata)
-      .elsewhen(io.csr === CSRs.minstreth.U)(instret := wdata ## instret.lowHalf)
+    when(csr_addr === CSRs.mscratch.U)(mscratch := wdata)
+      .elsewhen(csr_addr === CSRs.mstatus.U)(mstatus := wdata.asTypeOf(new MStatus))
+      .elsewhen(csr_addr === CSRs.mie.U)(mie := wdata.asTypeOf(new Mie(mxLen)))
+      .elsewhen(csr_addr === CSRs.mtvec.U)(mtvec := wdata)
+      .elsewhen(csr_addr === CSRs.mepc.U)(mepc := wdata)
+      .elsewhen(csr_addr === CSRs.mcause.U)(mcause := wdata)
+      .elsewhen(csr_addr === CSRs.mtval.U)(mtval := wdata)
+      .elsewhen(csr_addr === CSRs.mip.U)(mip := wdata.asTypeOf(new Mip(mxLen)))
+      .elsewhen(csr_addr === CSRs.time.U)(time := time.highHalf ## wdata)
+      .elsewhen(csr_addr === CSRs.timeh.U)(time := wdata ## time.lowHalf)
+      .elsewhen(csr_addr === CSRs.mcycle.U)(cycle := cycle.highHalf ## wdata)
+      .elsewhen(csr_addr === CSRs.mcycleh.U)(cycle := wdata ## cycle.lowHalf)
+      .elsewhen(csr_addr === CSRs.minstret.U)(instret := instret.highHalf ## wdata)
+      .elsewhen(csr_addr === CSRs.minstreth.U)(instret := wdata ## instret.lowHalf)
   }
 }
 
