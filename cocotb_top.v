@@ -1,16 +1,16 @@
 module wb_ram (
-    input              clk,
-    input      [ 31:0] addr,
-    input      [ 31:0] wdata,
-    input      [3 : 0] sel,
-    input              we,
-    input              cyc,
-    input              stb,
-    output reg [ 31:0] rdata,
-    output reg         ack
+    input             clk,
+    input      [31:0] addr,
+    input      [31:0] wdata,
+    input      [ 3:0] sel,
+    input             we,
+    input             cyc,
+    input             stb,
+    output reg [31:0] rdata,
+    output reg        ack
 );
 
-  reg [7 : 0] mem[16383:0];  // 16KB
+  reg [7:0] mem[16383:0];  // 16KB
 
   integer i;
   always @(posedge clk) begin
