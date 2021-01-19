@@ -24,7 +24,6 @@ async def riscv_test(dut):
     dut.reset <= 0
 
     cpu = dut.soc.cpu
-
     cnt = 0
 
     while True:
@@ -43,17 +42,18 @@ async def riscv_test(dut):
                 stdout=PIPE,
             ).stdout.decode("utf-8")
             print(
-                "pc = {:8x} ({}) {}|mscratch = {}|csr_in = {}|csr_out = {}|csr.wdata = {}|a1 = {}|rf_wdata = {}|wen = {}".format(
+                "pc = {:4x} ({}) {}|int={}|xcpt={}|io.xcpt={}|M[P]IE={},{}|mtvec={:x}|mepc={:x}|mcause={}".format(
                     bin2dec(cpu.pc),
                     inst,
                     asm.replace("\n", ""),
-                    bin2dec(cpu.csr.mscratch),
-                    bin2dec(cpu.csr.io_in),
-                    bin2dec(cpu.csr.io_out),
-                    bin2dec(cpu.csr.wdata),
-                    bin2dec(cpu.rf.reg_11),
-                    bin2dec(cpu.rf.io_wdata),
-                    bin2dec(cpu.rf.io_wen),
+                    bin2dec(cpu.csr.interrupt),
+                    bin2dec(cpu.csr.exception),
+                    bin2dec(cpu.csr.io_xcpt),
+                    bin2dec(cpu.csr.mstatus_mie),
+                    bin2dec(cpu.csr.mstatus_mpie),
+                    bin2dec(cpu.csr.mtvec),
+                    bin2dec(cpu.csr.mepc),
+                    bin2dec(cpu.csr.mcause),
                 )
             )
         else:

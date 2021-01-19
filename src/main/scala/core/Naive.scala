@@ -289,7 +289,7 @@ class Naive(implicit c: Config) extends CoreModule {
   xcpt             := csr.io.xcpt
   mtvec            := csr.io.mtvec
   xret             := csr.io.xret
-  mepc             := csr.io.mepc
+  mepc             := csr.io.xepc
 
   rf.io.wen   := cs.fmt =/= FMT_S && cs.fmt =/= FMT_SB && cs.fmt =/= FMT_WIP
   rf.io.waddr := rd

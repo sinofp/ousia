@@ -10,9 +10,9 @@ if "SIM" not in environ:
 @pytest.mark.parametrize(
     "inst",
     [
-        # "rv32mi-p-breakpoint", # 其实tdata那些没实现……
+        "rv32mi-p-breakpoint",  # 其实tdata那些没实现……
         "rv32mi-p-csr",
-        # "rv32mi-p-illegal", # j 0
+        "rv32mi-p-illegal",
         # "rv32mi-p-ma_addr",
         # "rv32mi-p-ma_fetch",
         "rv32mi-p-mcsr",
