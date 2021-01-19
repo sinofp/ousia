@@ -18,7 +18,7 @@ if "SIM" not in environ:
         "rv32mi-p-mcsr",
         "rv32mi-p-sbreak",
         # "rv32mi-p-scall", # write_tohost，spike也在这死循环
-        # "rv32mi-p-shamt", # test 3
+        "rv32mi-p-shamt",
         "rv32ui-p-add",
         "rv32ui-p-addi",
         "rv32ui-p-and",
