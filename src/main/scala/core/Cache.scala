@@ -4,6 +4,9 @@ import chipsalliance.rocketchip.config.Config
 import chisel3._
 import chisel3.util._
 
+import scala.annotation.nowarn
+
+@nowarn("cat=deprecation")
 class Cache(implicit c: Config) extends CoreModule {
   val io = IO(new CacheModuleIO)
 
@@ -36,8 +39,8 @@ class CacheModuleIO(implicit c: Config) extends CoreBundle {
 class CachePassThrough(implicit c: Config) extends CoreModule {
   val io = IO(new CacheModuleIO)
 
-  io.wb.cyc             := io.cpu.req.valid
-  io.wb.stb             := io.cpu.req.valid
+  io.wb.cyc             := io.cpu.req.valid && !io.cpu.abort
+  io.wb.stb             := io.cpu.req.valid && !io.cpu.abort
   io.wb.sel             := io.cpu.req.bits.sel
   io.wb.addr            := io.cpu.req.bits.addr
   io.wb.wdata           := io.cpu.req.bits.data
@@ -86,14 +89,14 @@ class CacheDirectMap(val c_index: Int)(implicit c: Config) extends CoreModule {
   }
 
   val mem_req_valid = RegInit(false.B) // 要记着几个周期，所以不能是Wire
-  io.wb.cyc   := mem_req_valid
-  io.wb.stb   := mem_req_valid
+  io.wb.cyc   := mem_req_valid && !io.cpu.abort
+  io.wb.stb   := mem_req_valid && !io.cpu.abort
   io.wb.addr  := io.cpu.req.bits.addr
   io.wb.we    := false.B
   io.wb.sel   := "b1111".U
   io.wb.wdata := dataOut // 要写就只有写脏的数据，这个是dataOut
 
-  io.cpu.resp.valid     := false.B
+  io.cpu.resp.valid     := false.B // abort
   io.cpu.resp.bits.data := dataOut
 
   switch(state) {

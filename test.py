@@ -13,7 +13,7 @@ if "SIM" not in environ:
         "rv32mi-p-breakpoint",  # 其实tdata那些没实现……
         "rv32mi-p-csr",
         "rv32mi-p-illegal",
-        # "rv32mi-p-ma_addr",
+        "rv32mi-p-ma_addr",
         # "rv32mi-p-ma_fetch",
         "rv32mi-p-mcsr",
         "rv32mi-p-sbreak",

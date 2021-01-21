@@ -33,13 +33,15 @@ class Naive(implicit c: Config) extends CoreModule {
   val iack      = icache.io.cpu.resp.valid
   val dack      = dcache.io.cpu.resp.valid
   val iack2     = RegNext(iack, false.B)
-  val commit    = !mem_en && iack2 || mem_en && dack
-  val iread     = RegInit(Bool(), true.B)
+  val xcpt      = WireInit(Bool(), false.B)
+  val xret      = WireInit(Bool(), false.B)
+  val mtvec     = Wire(UInt(xLen.W))
+  val mepc      = Wire(UInt(xLen.W))
+
+  // 这个不应该叫commit，因为发生异常的指令不会commit。这个变量表示该执行下一条指令的意思
+  val commit = xcpt || !mem_en && iack2 || mem_en && dack
+  val iread  = RegInit(Bool(), true.B)
   iread := Mux(commit || iack, !iread, iread)
-  val xcpt  = WireInit(Bool(), false.B)
-  val xret  = WireInit(Bool(), false.B)
-  val mtvec = Wire(UInt(xLen.W))
-  val mepc  = Wire(UInt(xLen.W))
 
   // IF
   val icache_req  = icache.io.cpu.req
@@ -48,7 +50,7 @@ class Naive(implicit c: Config) extends CoreModule {
   val pcp4        = pc + 4.U
   pc                   := Mux(
     commit,
-    MuxCase(pcp4, Seq(br_taken -> br_target, jal -> (pc + imm), jalr -> (Rrs1 + imm), xcpt -> mtvec, xret -> mepc)),
+    MuxCase(pcp4, Seq(xcpt -> mtvec, xret -> mepc, br_taken -> br_target, jal -> (pc + imm), jalr -> (Rrs1 + imm))),
     pc,
   )
   icache.io.cpu.abort  := false.B
@@ -58,7 +60,7 @@ class Naive(implicit c: Config) extends CoreModule {
   icache_req.bits.we   := false.B
   icache_req.bits.data := DontCare
   val inst = Reg(UInt(32.W))
-  inst         := MuxCase("h00000013".U, Seq((mem_en && !dack) -> inst, iack -> icache_resp.bits.data))
+  inst         := MuxCase("h00000013".U, Seq((mem_en && !dack && !xcpt) -> inst, iack -> icache_resp.bits.data))
   icache.io.wb <> io.iwb
 
   // ID
@@ -220,21 +222,25 @@ class Naive(implicit c: Config) extends CoreModule {
 
   // MEM
   io.dwb              <> dcache.io.wb
-  dcache.io.cpu.abort := false.B
-  val dcache_req  = dcache.io.cpu.req
-  val dcache_resp = dcache.io.cpu.resp
-  dcache_req.bits.addr := alu.io.out(31, 2) ## 0.U(2.W)
+  dcache.io.cpu.abort := xcpt
+  val dcache_req   = dcache.io.cpu.req
+  val dcache_resp  = dcache.io.cpu.resp
+  val _mem_addr    = alu.io.out
+  // 有时会出现lw xx, ?(xx)这样同一个寄存器即生成地址又接受数据的情况。因为现在等待访存结束是重复执行那条访存指令，所以同一条指令，地址会变
+  val mem_addr_reg = RegEnable(_mem_addr, iack2)
+  val mem_addr     = Mux(iack2, _mem_addr, mem_addr_reg)
+  dcache_req.bits.addr := mem_addr(31, 2) ## 0.U(2.W)
   dcache_req.valid     := cs.mem_en
   // 这玩意写进decode里？还是整个LSU出来
   val dcache_sel = MuxCase(
     "b1111".U,
     Seq(
-      ((cs.mem_sz === MEM_HU || cs.mem_sz === MEM_H) && !alu.io.out(1))           -> "b0011".U,
-      ((cs.mem_sz === MEM_HU || cs.mem_sz === MEM_H) && alu.io.out(1))            -> "b1100".U,
-      ((cs.mem_sz === MEM_BU || cs.mem_sz === MEM_B) && alu.io.out(1, 0) === 0.U) -> "b0001".U,
-      ((cs.mem_sz === MEM_BU || cs.mem_sz === MEM_B) && alu.io.out(1, 0) === 1.U) -> "b0010".U,
-      ((cs.mem_sz === MEM_BU || cs.mem_sz === MEM_B) && alu.io.out(1, 0) === 2.U) -> "b0100".U,
-      ((cs.mem_sz === MEM_BU || cs.mem_sz === MEM_B) && alu.io.out(1, 0) === 3.U) -> "b1000".U,
+      ((cs.mem_sz === MEM_HU || cs.mem_sz === MEM_H) && !mem_addr(1))           -> "b0011".U,
+      ((cs.mem_sz === MEM_HU || cs.mem_sz === MEM_H) && mem_addr(1))            -> "b1100".U,
+      ((cs.mem_sz === MEM_BU || cs.mem_sz === MEM_B) && mem_addr(1, 0) === 0.U) -> "b0001".U,
+      ((cs.mem_sz === MEM_BU || cs.mem_sz === MEM_B) && mem_addr(1, 0) === 1.U) -> "b0010".U,
+      ((cs.mem_sz === MEM_BU || cs.mem_sz === MEM_B) && mem_addr(1, 0) === 2.U) -> "b0100".U,
+      ((cs.mem_sz === MEM_BU || cs.mem_sz === MEM_B) && mem_addr(1, 0) === 3.U) -> "b1000".U,
     ),
   )
   // read
@@ -291,7 +297,7 @@ class Naive(implicit c: Config) extends CoreModule {
   xret             := csr.io.xret
   mepc             := csr.io.xepc
 
-  rf.io.wen   := cs.fmt =/= FMT_S && cs.fmt =/= FMT_SB && cs.fmt =/= FMT_WIP
+  rf.io.wen   := (cs.fmt =/= FMT_S && cs.fmt =/= FMT_SB && cs.fmt =/= FMT_WIP) && !xcpt
   rf.io.waddr := rd
   rf.io.wdata := MuxLookup(
     sel_rf_wdata,

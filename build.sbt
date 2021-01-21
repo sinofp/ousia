@@ -2,7 +2,7 @@ name := "ousia"
 
 organization := "top.emptystack"
 version      := "0.1.0-SNAPSHOT"
-scalaVersion := "2.12.12"
+scalaVersion := "2.12.13"
 
 lazy val `api-config-chipsalliance` = project in file("api-config-chipsalliance/build-rules/sbt")
 lazy val ousia                      = (project in file(".")).dependsOn(`api-config-chipsalliance`)

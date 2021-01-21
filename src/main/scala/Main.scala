@@ -2,10 +2,12 @@ import chipsalliance.rocketchip.config.Config
 import chisel3.stage.{ChiselGeneratorAnnotation, ChiselStage}
 import core._
 
-import scala.annotation.tailrec
+import scala.annotation.{nowarn, tailrec}
 
 object Main extends App {
   type OptionMap = Map[String, String]
+
+  @nowarn
   @tailrec
   def parse(map: OptionMap, list: List[String]): OptionMap =
     list match {
@@ -16,6 +18,7 @@ object Main extends App {
   val options = parse(Map(), args.toList)
   println(s"[info] output to ${options("dir")}")
 
-  implicit val c = new Config(new WithCacheDirectMap ++ new NaiveConfig)
+//  implicit val c = new Config(new WithCacheDirectMap ++ new NaiveConfig)
+  implicit val c = new Config(new NaiveConfig)
   new ChiselStage execute (Array("--target-dir", options("dir")), Seq(ChiselGeneratorAnnotation(() => new Naive)))
 }
