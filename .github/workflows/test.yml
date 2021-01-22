@@ -15,7 +15,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install verilator radare2
+          sudo apt install verilator
           sudo pip install cocotb-test fusesoc pytest-xdist[psutil]
       - name: Prepare Verilog
         run: |

@@ -2,7 +2,8 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import FallingEdge
 from collections import deque
-from subprocess import run, PIPE
+from os import environ, getcwd
+import re
 
 
 def bin2dec(x):
@@ -12,6 +13,14 @@ def bin2dec(x):
 pattern = deque(maxlen=3)
 pass_pattern = deque(["05d00893", "00000513", "00000073"])
 fail_pattern = deque(["00018063", "00119193", "0011e193"])
+
+asm = {}
+with open(environ["DUMPFILE"]) as f:
+    for line in f.readlines():
+        res = re.search(r"[0-9a-f]{8}:\s+([0-9a-f]{8})\s+([^#<\n]+)", line)
+        if res is not None:
+            group = res.groups()
+            asm[group[0]] = group[1]
 
 
 @cocotb.test()
@@ -33,21 +42,11 @@ async def riscv_test(dut):
             cnt = 0
             inst = "{:08x}".format(bin2dec(cpu.inst))
             pattern.append(inst)
-            asm = run(
-                [
-                    "rasm2",
-                    "-a",
-                    "riscv",
-                    "-d",
-                    inst[-2:] + inst[-4:-2] + inst[2:4] + inst[:2],  # -e 有问题
-                ],
-                stdout=PIPE,
-            ).stdout.decode("utf-8")
             print(
                 "pc = {:4x} ({}) {}|t0={:x}".format(
                     bin2dec(cpu.pc),
                     inst,
-                    asm.replace("\n", ""),
+                    asm.get(inst, "???"),
                     bin2dec(cpu.rf.reg_5),
                 )
             )
