@@ -29,9 +29,7 @@ async def riscv_test(dut):
     cnt = 0
 
     while True:
-        # if cpu.commit == 1:
-        if cpu.commit == 1 or cpu.pc == 0x350:
-            # if True:
+        if cpu.commit == 1:
             cnt = 0
             inst = "{:08x}".format(bin2dec(cpu.inst))
             pattern.append(inst)
