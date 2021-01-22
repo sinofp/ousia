@@ -8,23 +8,25 @@ import Consts._
 import Instructions._
 
 class CSRIO(val mxLen: Int)(implicit c: Config) extends CoreBundle {
-  val pc        = Input(UInt(xLen.W))
-  val inst      = Input(UInt(xLen.W))
-  val inst_ilgl = Input(Bool())
-  val inst_ret  = Input(Bool())
-  val mem_addr  = Input(UInt(xLen.W))
-  val mem_en    = Input(Bool())
-  val mem_rw    = Input(Bool())
-  val mem_sz    = Input(UInt(SZ_MEM_SZ.W))
-  val rs1IsX0   = Input(Bool())
-  val rdIsX0    = Input(Bool())
-  val cmd       = Input(UInt(SZ_CSR_CMD.W))
-  val in        = Input(UInt(mxLen.W))
-  val out       = Output(UInt(mxLen.W))
-  val xcpt      = Output(Bool())
-  val mtvec     = Output(UInt(xLen.W))
-  val xret      = Output(Bool())
-  val xepc      = Output(UInt(xLen.W))
+  val pc         = Input(UInt(xLen.W))
+  val inst       = Input(UInt(xLen.W))
+  val inst_ilgl  = Input(Bool())
+  val inst_ret   = Input(Bool())
+  val mem_addr   = Input(UInt(xLen.W))
+  val mem_en     = Input(Bool())
+  val mem_rw     = Input(Bool())
+  val mem_sz     = Input(UInt(SZ_MEM_SZ.W))
+  val rs1IsX0    = Input(Bool())
+  val rdIsX0     = Input(Bool())
+  val jbr        = Input(Bool())
+  val jbr_target = Input(UInt(xLen.W))
+  val cmd        = Input(UInt(SZ_CSR_CMD.W))
+  val in         = Input(UInt(mxLen.W))
+  val out        = Output(UInt(mxLen.W))
+  val xcpt       = Output(Bool())
+  val mtvec      = Output(UInt(xLen.W))
+  val xret       = Output(Bool())
+  val xepc       = Output(UInt(xLen.W))
 }
 
 class CSR(implicit c: Config) extends CoreModule {
@@ -78,7 +80,7 @@ class CSR(implicit c: Config) extends CoreModule {
     false.B,
     Seq(MEM_H -> io.mem_addr(0), MEM_W -> io.mem_addr(1, 0).orR),
   )
-  val misalignedFetch = io.pc(1, 0).orR // C
+  val misalignedFetch = io.jbr && io.jbr_target(1, 0).orR // C
 
   val isEcall :: isEbreak :: isMRet :: isSRet :: isSFenceVMA :: Nil =
     DecodeLogic(
@@ -180,7 +182,7 @@ class CSR(implicit c: Config) extends CoreModule {
       0.U,
       Seq(
         io.inst_ilgl    -> io.inst,
-        misalignedFetch -> io.pc,
+        misalignedFetch -> io.jbr_target,
         misalignedStore -> io.mem_addr,
         misalignedLoad  -> io.mem_addr,
       ),

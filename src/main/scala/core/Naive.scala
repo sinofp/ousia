@@ -48,11 +48,9 @@ class Naive(implicit c: Config) extends CoreModule {
   val icache_resp = icache.io.cpu.resp
   val pc          = RegInit(UInt(32.W), 0.U)
   val pcp4        = pc + 4.U
-  pc                   := Mux(
-    commit,
-    MuxCase(pcp4, Seq(xcpt -> mtvec, xret -> mepc, br_taken -> br_target, jal -> (pc + imm), jalr -> (Rrs1 + imm))),
-    pc,
-  )
+  val jbr         = br_taken || jal || jalr
+  val jbr_target  = MuxCase(br_target, Seq(jal -> (pc + imm), jalr -> (Rrs1 + (imm(31, 1) ## 0.U))))
+  pc                   := Mux(commit, MuxCase(pcp4, Seq(xcpt -> mtvec, xret -> mepc, jbr -> jbr_target)), pc)
   icache.io.cpu.abort  := false.B
   icache_req.bits.addr := pc
   icache_req.valid     := iread
@@ -280,22 +278,24 @@ class Naive(implicit c: Config) extends CoreModule {
 
   // WB
   val csr = Module(new CSR)
-  csr.io.pc        := pc
-  csr.io.inst      := inst
-  csr.io.inst_ilgl := !cs.legal
-  csr.io.inst_ret  := commit
-  csr.io.mem_addr  := alu.io.out
-  csr.io.mem_en    := cs.mem_en
-  csr.io.mem_rw    := cs.mem_rw
-  csr.io.mem_sz    := cs.mem_sz
-  csr.io.cmd       := cs.csr_cmd
-  csr.io.rdIsX0    := !rd.orR
-  csr.io.rs1IsX0   := !rs1.orR // 这个不只代表rs1不是x0，也意味着CSR??I的uimm不是0
-  csr.io.in        := alu.io.out
-  xcpt             := csr.io.xcpt
-  mtvec            := csr.io.mtvec
-  xret             := csr.io.xret
-  mepc             := csr.io.xepc
+  csr.io.pc         := pc
+  csr.io.inst       := inst
+  csr.io.inst_ilgl  := !cs.legal
+  csr.io.inst_ret   := commit
+  csr.io.mem_addr   := alu.io.out
+  csr.io.mem_en     := cs.mem_en
+  csr.io.mem_rw     := cs.mem_rw
+  csr.io.mem_sz     := cs.mem_sz
+  csr.io.cmd        := cs.csr_cmd
+  csr.io.rdIsX0     := !rd.orR
+  csr.io.rs1IsX0    := !rs1.orR // 这个不只代表rs1不是x0，也意味着CSR??I的uimm不是0
+  csr.io.in         := alu.io.out
+  csr.io.jbr        := jbr
+  csr.io.jbr_target := jbr_target
+  xcpt              := csr.io.xcpt
+  mtvec             := csr.io.mtvec
+  xret              := csr.io.xret
+  mepc              := csr.io.xepc
 
   rf.io.wen   := (cs.fmt =/= FMT_S && cs.fmt =/= FMT_SB && cs.fmt =/= FMT_WIP) && !xcpt
   rf.io.waddr := rd

@@ -14,7 +14,7 @@ if "SIM" not in environ:
         "rv32mi-p-csr",
         "rv32mi-p-illegal",
         "rv32mi-p-ma_addr",
-        # "rv32mi-p-ma_fetch",
+        "rv32mi-p-ma_fetch",
         "rv32mi-p-mcsr",
         "rv32mi-p-sbreak",
         # "rv32mi-p-scall", # write_tohost，spike也在这死循环
