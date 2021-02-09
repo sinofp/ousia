@@ -9,11 +9,11 @@ generate:
         ibus:
           slaves: [ram]
         dbus:
-          slaves: [ram]
+          slaves: [ram, uart]
       slaves:
         ram:
           offset: 0
-          size: 0x10000000
+          size: 0x20000 # 16KB
         uart:
           offset: 0x10000000
           size: 0x10000000

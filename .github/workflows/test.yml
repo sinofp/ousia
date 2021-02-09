@@ -2,9 +2,9 @@ name: Test
 
 on:
   push:
-    branches: [ master ]
+    branches: [master]
   pull_request:
-    branches: [ master ]
+    branches: [master]
 
 jobs:
   riscv-tests:
@@ -24,4 +24,4 @@ jobs:
           fusesoc init -y
           fusesoc --cores-root=. run ousia
       - name: Test
-        run: pytest -o log_cli=True --log-level=ERROR test.py --numprocesses auto
+        run: pytest test.py --numprocesses auto

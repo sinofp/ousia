@@ -116,3 +116,21 @@ def test_uart():
         module="uart_test",
         sim_build="sim_build/uart",
     )
+
+
+def test_firmware():
+    with prepare("firmware", "firmware") as top_v:
+        simulator.run(
+            verilog_sources=["Naive.v", "naive_soc.v", top_v],
+            includes=[
+                "./build/ousia_0/src/verilog-arbiter_0-r3/src/",
+                "./build/ousia_0/src/cdc_utils_0.1/rtl/verilog/",
+                "./build/ousia_0/src/wb_intercon_1.2.2-r1/rtl/verilog/",
+                "./build/ousia_0/src/ousia-wb_intercon_0/",
+                "./build/ousia_0/src/wb_common_1.0.3/",
+                "./build/ousia_0/src/uart16550_1.5.5-r1/rtl/verilog/",
+            ],
+            toplevel="cocotb_top",
+            module="firmware_test",
+            sim_build="sim_build/firmware",
+        )
