@@ -7,7 +7,7 @@ on:
     branches: [master]
 
 jobs:
-  riscv-tests:
+  get-verilog:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
@@ -16,12 +16,50 @@ jobs:
         run: |
           sudo apt update
           sudo apt install verilator
-          sudo pip install cocotb-test fusesoc pytest-xdist[psutil]
+          sudo pip install fusesoc
       - name: Prepare Verilog
         run: |
           git submodule update --init --depth 1
           sbt run
           fusesoc init -y
           fusesoc --cores-root=. run ousia
+      - uses: actions/upload-artifact@v2
+        with:
+          name: my-verilog
+          path: build
+  riscv-tests:
+    needs: get-verilog
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install verilator
+          sudo pip install cocotb-test pytest-xdist[psutil]
+      - uses: actions/download-artifact@v2
+        with:
+          name: my-verilog
+          path: build
       - name: Test
-        run: pytest test.py --numprocesses auto
+        run: |
+          cp build/ousia_0/src/ousia_0/Naive.v .
+          pytest test.py --numprocesses auto -k inst
+  misc-tests:
+    needs: get-verilog
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install verilator
+          sudo pip install cocotb-test pytest-xdist[psutil]
+      - uses: actions/download-artifact@v2
+        with:
+          name: my-verilog
+          path: build
+      - name: Test
+        run: |
+          cp build/ousia_0/src/ousia_0/Naive.v .
+          pytest test.py --numprocesses auto -k 'not inst'
