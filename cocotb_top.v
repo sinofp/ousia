@@ -29,8 +29,10 @@ module wb_ram (
 endmodule
 
 module cocotb_top (
-    input clk,
-    input reset
+    input  clk,
+    input  reset,
+    input  uart_rx,
+    output uart_tx
 );
 
   wire [31:0] inst_addr;
@@ -86,7 +88,9 @@ module cocotb_top (
       .ram_cyc(ram_cyc),
       .ram_stb(ram_stb),
       .ram_rdata(ram_rdata),
-      .ram_ack(ram_ack)
+      .ram_ack(ram_ack),
+      .uart_rx(uart_rx),
+      .uart_tx(uart_tx)
   );
 
 endmodule

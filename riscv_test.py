@@ -17,7 +17,7 @@ fail_pattern = deque(["00018063", "00119193", "0011e193"])
 asm = {}
 with open(environ["DUMPFILE"]) as f:
     for line in f.readlines():
-        res = re.search(r"[0-9a-f]{8}:\s+([0-9a-f]{8})\s+([^#<\n]+)", line)
+        res = re.search(r"(?:.{8}|.{4}):\s+([0-9a-f]{8})\s+([^#<\n]+)", line)
         if res is not None:
             group = res.groups()
             asm[group[0]] = group[1]

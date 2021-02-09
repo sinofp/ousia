@@ -60,18 +60,17 @@ if "SIM" not in environ:
 
 
 @contextmanager
-def prepare(inst):
-    isapath = "/usr/riscv-sifive-elf/share/riscv-tests/isa"
-    top_v = f"cocotb_top_{inst}.v"
-    memfile = f"{getcwd()}/meminit/{inst}.verilog"
-    dumpfile = f"{getcwd()}/meminit/{inst}.dump"
+def prepare(elf_dir, elf_name):
+    top_v = f"cocotb_top_{elf_name}.v"
+    memfile = f"{getcwd()}/meminit/{elf_name}.verilog"
+    dumpfile = f"{getcwd()}/meminit/{elf_name}.dump"
 
     if not Path(memfile).is_file():
-        system(f"riscv-sifive-elf-objcopy {isapath}/{inst} -O verilog {memfile}")
+        system(f"riscv-sifive-elf-objcopy {elf_dir}/{elf_name} -O verilog {memfile}")
         system(f"sed -i 's|@8|@0|g' {memfile}")
 
     if not Path(dumpfile).is_file():
-        system(f"cp {isapath}/{inst}.dump {dumpfile}")
+        system(f"riscv-sifive-elf-objdump -D {elf_dir}/{elf_name} > {dumpfile}")
 
     system(f"cp cocotb_top.v {top_v}")
     system(f"""sed -i 's|readmemh.*|readmemh("{memfile}", ram.mem);|' {top_v}""")
@@ -86,7 +85,8 @@ def prepare(inst):
 
 @pytest.mark.parametrize("inst", insts)
 def test_inst(inst):
-    with prepare(inst) as top_v:
+    elf_dir = "/usr/riscv-sifive-elf/share/riscv-tests/isa"
+    with prepare(elf_dir, inst) as top_v:
         simulator.run(
             verilog_sources=["Naive.v", "naive_soc.v", top_v],
             includes=[
@@ -95,9 +95,24 @@ def test_inst(inst):
                 "./build/ousia_0/src/wb_intercon_1.2.2-r1/rtl/verilog/",
                 "./build/ousia_0/src/ousia-wb_intercon_0/",
                 "./build/ousia_0/src/wb_common_1.0.3/",
+                "./build/ousia_0/src/uart16550_1.5.5-r1/rtl/verilog/",
             ],
             toplevel="cocotb_top",
             module="riscv_test",
             sim_build="sim_build/" + inst,
             # extra_args=["--trace", "--trace-structs"],
         )
+
+
+def test_uart():
+    simulator.run(
+        verilog_sources=[
+            "./build/ousia_0/src/uart16550_1.5.5-r1/rtl/verilog/uart_top.v"
+        ],
+        includes=[
+            "./build/ousia_0/src/uart16550_1.5.5-r1/rtl/verilog/",
+        ],
+        toplevel="uart_top",
+        module="uart_test",
+        sim_build="sim_build/uart",
+    )

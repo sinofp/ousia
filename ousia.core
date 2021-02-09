@@ -1,9 +1,9 @@
 CAPI=2:
-name : ::ousia:0
+name: ::ousia:0
 
 generate:
   wb_intercon:
-    generator : wb_intercon_gen
+    generator: wb_intercon_gen
     parameters:
       masters:
         ibus:
@@ -12,38 +12,44 @@ generate:
           slaves: [ram]
       slaves:
         ram:
-          offset : 0
-          size : 0x2000000
+          offset: 0
+          size: 0x10000000
+        uart:
+          offset: 0x10000000
+          size: 0x10000000
 
 filesets:
   naive_soc:
     files:
       - Naive.v
       - naive_soc.v
-    file_type : verilogSource
-    depend:
-      [wb_intercon]
+    file_type: verilogSource
+    depend: [wb_intercon, uart16550]
   cocotb:
     files:
       - cocotb_top.v
-    file_type : verilogSource
+    file_type: verilogSource
+  quartus:
+    files:
+      - quartus_top.v
+    file_type: verilogSource
 
 targets:
   default:
-    filesets : [naive_soc, cocotb]
-    generate : [wb_intercon]
+    filesets: [naive_soc, cocotb]
+    generate: [wb_intercon]
     toplevel: cocotb_top
-    default_tool : verilator
+    default_tool: verilator
     tools:
       verilator:
         mode: lint-only
   quartus:
-    filesets : [naive_soc]
-    generate : [wb_intercon]
-    toplevel: naive_soc
-    default_tool : quartus
+    filesets: [naive_soc, quartus]
+    generate: [wb_intercon]
+    toplevel: quartus_soc
+    default_tool: quartus
     tools:
       quartus:
-        family: 'Cyclone 10 LP'
-        device: '10CL016YU256C8G'
-
+        family: Cyclone 10 LP
+        device: 10CL016YU256C8G
+# vim:ft=yaml

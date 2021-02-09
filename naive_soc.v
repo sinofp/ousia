@@ -1,6 +1,7 @@
 module naive_soc (
     input clk,
     input reset,
+    // ram
     output [31:0] ram_addr,
     output [31:0] ram_wdata,
     output [3:0] ram_sel,
@@ -8,7 +9,10 @@ module naive_soc (
     output ram_cyc,
     output ram_stb,
     input [31:0] ram_rdata,
-    input ram_ack
+    input ram_ack,
+    // uart
+    input uart_rx,
+    output uart_tx
 );
 
   wire [31:0] inst_addr;
@@ -50,8 +54,40 @@ module naive_soc (
       .io_dwb_ack(data_ack)
   );
 
-  wire dontcare_i;
-  wire dontcare_o;
+  wire [31:0] uart_addr;
+  wire [31:0] uart_rdata;
+  wire [31:0] uart_wdata;
+  wire uart_we;
+  wire uart_cyc;
+  wire uart_stb;
+  wire uart_ack;
+
+  assign uart_rdata[31:8] = 24'b0;
+
+  // fusesoc's uart only support 8-bits
+  uart_top uart (
+      .wb_clk_i (clk),
+      .wb_rst_i (reset),
+      .wb_adr_i (uart_addr[4:2]),
+      .wb_dat_i (uart_wdata[7:0]),
+      .wb_we_i  (uart_we),
+      .wb_cyc_i (uart_cyc),
+      .wb_stb_i (uart_stb),
+      .wb_sel_i (),
+      .wb_dat_o (uart_rdata[7:0]),
+      .wb_ack_o (uart_ack),
+      .int_o    (),
+      .stx_pad_o(uart_tx),
+      .rts_pad_o(),
+      .dtr_pad_o(),
+      .srx_pad_i(uart_rx),
+      .cts_pad_i(1'b0),
+      .dsr_pad_i(1'b0),
+      .ri_pad_i (1'b0),
+      .dcd_pad_i(1'b0)
+  );
+
+
   wire [1:0] bte_o = 0;
   wire [2:0] cti_o;
   wire [2:0] cti = 0;
@@ -70,8 +106,8 @@ module naive_soc (
       .wb_dbus_bte_i(bte),
       .wb_dbus_dat_o(data_rdata),
       .wb_dbus_ack_o(data_ack),
-      .wb_dbus_err_o(dontcare_o),
-      .wb_dbus_rty_o(dontcare_o),
+      .wb_dbus_err_o(),
+      .wb_dbus_rty_o(),
       .wb_ibus_adr_i(inst_addr),
       .wb_ibus_dat_i(inst_rdata),
       .wb_ibus_sel_i(inst_sel),
@@ -82,8 +118,8 @@ module naive_soc (
       .wb_ibus_bte_i(bte),
       .wb_ibus_dat_o(inst_rdata),
       .wb_ibus_ack_o(inst_ack),
-      .wb_ibus_err_o(dontcare_o),
-      .wb_ibus_rty_o(dontcare_o),
+      .wb_ibus_err_o(),
+      .wb_ibus_rty_o(),
       .wb_ram_adr_o(ram_addr),
       .wb_ram_dat_o(ram_wdata),
       .wb_ram_sel_o(ram_sel),
@@ -94,8 +130,20 @@ module naive_soc (
       .wb_ram_bte_o(bte_o),
       .wb_ram_dat_i(ram_rdata),
       .wb_ram_ack_i(ram_ack),
-      .wb_ram_err_i(dontcare_i),
-      .wb_ram_rty_i(dontcare_i)
+      .wb_ram_err_i(),
+      .wb_ram_rty_i(),
+      .wb_uart_adr_o(uart_addr),
+      .wb_uart_dat_o(uart_wdata),
+      .wb_uart_sel_o(),
+      .wb_uart_we_o(uart_we),
+      .wb_uart_cyc_o(uart_cyc),
+      .wb_uart_stb_o(uart_stb),
+      .wb_uart_cti_o(cti_o),
+      .wb_uart_bte_o(bte_o),
+      .wb_uart_dat_i(uart_rdata),
+      .wb_uart_ack_i(uart_ack),
+      .wb_uart_err_i(),
+      .wb_uart_rty_i()
   );
 
 endmodule
