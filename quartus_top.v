@@ -37,7 +37,7 @@ module quartus_top (
   pll pll (
       .areset(~key_c_n),
       .inclk0(clk_50m),
-      .c0(clk),  // 目前还是50MHz
+      .c0(clk),  // 5MHz
       .locked(pll_locked)
   );
 
@@ -99,7 +99,7 @@ module quartus_top (
   wire clk_1h;
   clk_div #(
       .WIDTH(32),
-      .N(50 * 1024 * 1024)
+      .N(5 * 1024 * 1024)
   ) clk_div (
       .clk(clk),
       .rst_n(pll_locked),

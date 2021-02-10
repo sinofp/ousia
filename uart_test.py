@@ -9,7 +9,7 @@ async def uart_test(dut):
     clock = Clock(dut.wb_clk_i, one_second / clk_rate, units="ns")
     cocotb.fork(clock.start())
 
-    uart = UART(dut, 115200)
+    uart = UART(dut, 38400)
     await uart.reset()
     await uart.init()
 

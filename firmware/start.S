@@ -14,7 +14,7 @@ _start:
     li t0, 0
     sb t0, DLB2(a0)
 
-    li t0, 27
+    li t0, 8
     sb t0, DLB1(a0)
 
     li t0, 3

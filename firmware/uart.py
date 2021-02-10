@@ -3,7 +3,7 @@ from cocotb.clock import Clock
 from cocotb.triggers import FallingEdge, Timer
 
 one_second = 1000_000_000  # ns
-clk_rate = 50_000_000  # Hz
+clk_rate = 5_000_000  # Hz
 
 
 class UART:

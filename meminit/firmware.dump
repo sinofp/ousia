@@ -10,7 +10,7 @@ Disassembly of section .text:
    8:	00550623          	sb	t0,12(a0) # 1000000c <_end+0xfffffaa>
    c:	00000293          	li	t0,0
   10:	00550223          	sb	t0,4(a0)
-  14:	01b00293          	li	t0,27
+  14:	00800293          	li	t0,8
   18:	00550023          	sb	t0,0(a0)
   1c:	00300293          	li	t0,3
   20:	00550623          	sb	t0,12(a0)

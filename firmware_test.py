@@ -13,7 +13,7 @@ async def firmware_test(dut):
     await FallingEdge(dut.clk)
     dut.reset <= 0
 
-    fake_uart = UART("fake", 115200)
+    fake_uart = UART("fake", 38400)
 
     string = []
     while True:
