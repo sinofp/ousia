@@ -9,7 +9,7 @@ trait HasCoreConfigs {
   val rf2Top = c(RF2Top)
 }
 
-abstract class CoreModule(implicit val c: Config) extends Module with HasCoreConfigs
+abstract class CoreModule(implicit val c: Config) extends Module with HasCoreConfigs with RequireAsyncReset
 abstract class CoreBundle(implicit val c: Config) extends Bundle with HasCoreConfigs
 
 case object XLEN      extends Field[Int]

@@ -1,7 +1,7 @@
 # chisel
 *.json
 *.fir
-*.v
+Naive.v
 
 # scala, idea
 .bsp/
@@ -21,3 +21,4 @@ build/
 
 # binary
 firmware/firmware
+*.hex

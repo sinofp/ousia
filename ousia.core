@@ -31,8 +31,14 @@ filesets:
     file_type: verilogSource
   quartus:
     files:
-      - quartus_top.v
-    file_type: verilogSource
+      - pin.tcl: { file_type: tclSource }
+      - timing.sdc: { file_type: SDC }
+      - pll.qip: { file_type: QIP }
+      - pll.v: { file_type: verilogSource }
+      - ram.qip: { file_type: QIP }
+      - ram.v: { file_type: verilogSource }
+      - clk_div.v: { file_type: verilogSource }
+      - quartus_top.v: { file_type: verilogSource }
 
 targets:
   default:
@@ -46,7 +52,7 @@ targets:
   quartus:
     filesets: [naive_soc, quartus]
     generate: [wb_intercon]
-    toplevel: quartus_soc
+    toplevel: quartus_top
     default_tool: quartus
     tools:
       quartus:
