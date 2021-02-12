@@ -21,4 +21,5 @@ build/
 
 # binary
 firmware/firmware
+*.bin
 *.hex

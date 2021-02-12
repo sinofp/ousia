@@ -1,5 +1,6 @@
 module wb_ram (
     input             clk,
+    input             reset,
     input      [31:0] addr,
     input      [31:0] wdata,
     input      [ 3:0] sel,
@@ -10,18 +11,30 @@ module wb_ram (
     output reg        ack
 );
 
-  // todo SEL
-  ram ram (
-      .address(addr),
+  wire [31:0] q;
+  assign rdata = {q[7:0], q[15:8], q[23:16], q[31:24]};
+  ram mem (
+      .address(addr[31:2]),
+      .byteena(sel),
       .clock(clk),
-      .data(wdata),
-      .wren(we),
-      .q(rdata)
+      .data(wdata),  // 换顺序？
+      .rden(cyc & stb & ~we),
+      .wren(cyc & stb & we),
+      .q(q)
   );
 
-  // 一周期读写
-  always @(posedge clk) ack <= cyc & stb;
+  reg ack1;  // 拖一个周期
+  always @(posedge clk) begin
+    ack1 <= 1'b0;
+    if (cyc & stb & ~ack & ~ack1) begin
+      ack1 <= 1'b1;
+    end
+  end
 
+  always @(posedge clk or posedge reset) begin
+    if (reset) ack <= 1'b0;
+    else ack <= ack1;
+  end
 endmodule
 module quartus_top (
     output reg [7:0] led,
@@ -70,6 +83,7 @@ module quartus_top (
 
   wb_ram ram (
       .clk(clk),
+      .reset(~pll_locked),
       .addr(ram_addr),
       .wdata(ram_wdata),
       .sel(ram_sel),

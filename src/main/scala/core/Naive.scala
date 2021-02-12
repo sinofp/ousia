@@ -57,7 +57,7 @@ class Naive(implicit c: Config) extends CoreModule {
   icache_req.bits.sel  := "b1111".U
   icache_req.bits.we   := false.B
   icache_req.bits.data := DontCare
-  val inst = Reg(UInt(32.W))
+  val inst = RegInit(UInt(32.W), "h13".U)
   inst         := MuxCase("h00000013".U, Seq((mem_en && !dack && !xcpt) -> inst, iack -> icache_resp.bits.data))
   icache.io.wb <> io.iwb
 
