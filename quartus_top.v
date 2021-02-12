@@ -109,20 +109,10 @@ module quartus_top (
       .uart_tx(uart_tx)
   );
 
-  // led test
-  wire clk_1h;
-  clk_div #(
-      .WIDTH(32),
-      .N(5 * 1024 * 1024)
-  ) clk_div (
-      .clk(clk),
-      .rst_n(pll_locked),
-      .clkout(clk_1h)
-  );
-
-  always @(posedge clk_1h or negedge pll_locked) begin
-    if (!pll_locked) led <= 8'b11111110;
-    else led <= {led[0], led[7:1]};
+  // reset test
+  always @(posedge clk or negedge pll_locked) begin
+    if (!pll_locked) led <= 8'b01111111;
+    else led <= 8'b11111110;
   end
 
 endmodule
