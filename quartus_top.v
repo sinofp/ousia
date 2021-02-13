@@ -36,6 +36,17 @@ module wb_ram (
     else ack <= ack1;
   end
 endmodule
+module synchronizer (
+    input clk,
+    input asyncrst_n,
+    output reg rst_n
+);
+
+  reg rff1;
+  always @(posedge clk or negedge asyncrst_n)
+    if (!asyncrst_n) {rst_n, rff1} <= 2'b0;
+    else {rst_n, rff1} <= {rff1, 1'b1};
+endmodule
 module quartus_top (
     output reg [7:0] led,
     input clk_50m,
@@ -52,6 +63,13 @@ module quartus_top (
       .inclk0(clk_50m),
       .c0(clk),  // 5MHz
       .locked(pll_locked)
+  );
+
+  wire rst_n;
+  synchronizer synchronizer (
+      .clk(clk),
+      .asyncrst_n(pll_locked),
+      .rst_n(rst_n)
   );
 
   wire [31:0] inst_addr;
@@ -83,7 +101,7 @@ module quartus_top (
 
   wb_ram ram (
       .clk(clk),
-      .reset(~pll_locked),
+      .reset(~rst_n),
       .addr(ram_addr),
       .wdata(ram_wdata),
       .sel(ram_sel),
@@ -96,7 +114,7 @@ module quartus_top (
 
   naive_soc soc (
       .clk(clk),
-      .reset(~pll_locked),
+      .reset(~rst_n),
       .ram_addr(ram_addr),
       .ram_wdata(ram_wdata),
       .ram_sel(ram_sel),
@@ -110,9 +128,9 @@ module quartus_top (
   );
 
   // reset test
-  always @(posedge clk or negedge pll_locked) begin
-    if (!pll_locked) led <= 8'b01111111;
-    else led <= 8'b11111110;
+  always @(posedge clk) begin
+    if (!rst_n) led <= 8'b00000000;  // 时间太快，放开按键时微微一闪
+    else led <= 8'b11111111;
   end
 
 endmodule
