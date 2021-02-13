@@ -12,7 +12,9 @@ module naive_soc (
     input ram_ack,
     // uart
     input uart_rx,
-    output uart_tx
+    output uart_tx,
+    // gpio(led)
+    output [7:0] gpio_o
 );
 
   wire [31:0] inst_addr;
@@ -87,9 +89,32 @@ module naive_soc (
       .dcd_pad_i(1'b0)
   );
 
+  wire [31:0] gpio_addr;
+  wire [31:0] gpio_wdata;
+  wire gpio_we;
+  wire gpio_cyc;
+  wire gpio_stb;
+  wire gpio_ack;
 
-  wire [1:0] bte_o = 0;
-  wire [2:0] cti_o;
+  gpio led (
+      .wb_clk(clk),
+      .wb_rst(reset),
+      .wb_adr_i(gpio_addr[2]),
+      .wb_dat_i(gpio_wdata[7:0]),
+      .wb_we_i(gpio_we),
+      .wb_cyc_i(gpio_cyc),
+      .wb_stb_i(gpio_stb),
+      .wb_cti_i(),
+      .wb_bte_i(),
+      .wb_dat_o(),
+      .wb_ack_o(gpio_ack),
+      .wb_err_o(),
+      .wb_rty_o(),
+      .gpio_i(),
+      .gpio_o(gpio_o),
+      .gpio_dir_o()
+  );
+
   wire [2:0] cti = 0;
   wire [1:0] bte = 0;
 
@@ -126,8 +151,8 @@ module naive_soc (
       .wb_ram_we_o(ram_we),
       .wb_ram_cyc_o(ram_cyc),
       .wb_ram_stb_o(ram_stb),
-      .wb_ram_cti_o(cti_o),
-      .wb_ram_bte_o(bte_o),
+      .wb_ram_cti_o(),
+      .wb_ram_bte_o(),
       .wb_ram_dat_i(ram_rdata),
       .wb_ram_ack_i(ram_ack),
       .wb_ram_err_i(),
@@ -138,12 +163,24 @@ module naive_soc (
       .wb_uart_we_o(uart_we),
       .wb_uart_cyc_o(uart_cyc),
       .wb_uart_stb_o(uart_stb),
-      .wb_uart_cti_o(cti_o),
-      .wb_uart_bte_o(bte_o),
+      .wb_uart_cti_o(),
+      .wb_uart_bte_o(),
       .wb_uart_dat_i(uart_rdata),
       .wb_uart_ack_i(uart_ack),
       .wb_uart_err_i(),
-      .wb_uart_rty_i()
+      .wb_uart_rty_i(),
+      .wb_gpio_adr_o(gpio_addr),
+      .wb_gpio_dat_o(gpio_wdata),
+      .wb_gpio_sel_o(),
+      .wb_gpio_we_o(gpio_we),
+      .wb_gpio_cyc_o(gpio_cyc),
+      .wb_gpio_stb_o(gpio_stb),
+      .wb_gpio_cti_o(),
+      .wb_gpio_bte_o(),
+      .wb_gpio_dat_i(),
+      .wb_gpio_ack_i(gpio_ack),
+      .wb_gpio_err_i(),
+      .wb_gpio_rty_i()
   );
 
 endmodule

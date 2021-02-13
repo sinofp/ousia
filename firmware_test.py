@@ -15,8 +15,15 @@ async def firmware_test(dut):
 
     fake_uart = UART("fake", 38400)
 
+    await FallingEdge(dut.clk)
+    assert dut.gpio_o == 0, "gpio_o should be zero at beginning!"
+
     string = []
     while True:
         string.append(await fake_uart.recv(dut.soc.uart_tx))
-        if "".join(string) == "UART OK!\n":
+        if "".join(string) == "UART OK!!\r\n":
             break
+
+    assert dut.gpio_o == int("01010101", 2), "gpio_o is {:b}".format(
+        dut.gpio_o.value.integer
+    )

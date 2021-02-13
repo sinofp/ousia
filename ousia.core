@@ -9,13 +9,16 @@ generate:
         ibus:
           slaves: [ram]
         dbus:
-          slaves: [ram, uart]
+          slaves: [ram, uart, gpio]
       slaves:
         ram:
           offset: 0
           size: 0x20000 # 16KB
         uart:
           offset: 0x10000000
+          size: 0x10000000
+        gpio:
+          offset: 0x20000000
           size: 0x10000000
 
 filesets:
@@ -24,7 +27,7 @@ filesets:
       - Naive.v
       - naive_soc.v
     file_type: verilogSource
-    depend: [wb_intercon, uart16550]
+    depend: [wb_intercon, uart16550, gpio]
   cocotb:
     files:
       - cocotb_top.v
@@ -37,7 +40,6 @@ filesets:
       - pll.v: { file_type: verilogSource }
       - ram.qip: { file_type: QIP }
       - ram.v: { file_type: verilogSource }
-      - clk_div.v: { file_type: verilogSource }
       - quartus_top.v: { file_type: verilogSource }
 
 targets:

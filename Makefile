@@ -7,7 +7,7 @@ verilator:
 	make -j $$(nproc) && \
 	sudo make install
 
-firmware/firmware: firmware/start.S
+firmware/firmware: firmware/start.S firmware/uart.S firmware/led.S
 	$(TOOLCHAIN_PREFIX)gcc -static -mcmodel=medany -fvisibility=hidden -nostdlib -nostartfiles -march=rv32i -T firmware/linker.ld -o $@ $<
 
 firmware/firmware.bin: firmware/firmware

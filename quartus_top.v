@@ -48,7 +48,13 @@ module synchronizer (
     else {rst_n, rff1} <= {rff1, 1'b1};
 endmodule
 module quartus_top (
-    output reg [7:0] led,
+    output reg rgb_led1_r,
+    output reg rgb_led1_g,
+    output reg rgb_led1_b,
+    output reg rgb_led2_r,
+    output reg rgb_led2_g,
+    output reg rgb_led2_b,
+    output [7:0] led,
     input clk_50m,
     input key_c_n,
     input uart_rx,
@@ -112,6 +118,8 @@ module quartus_top (
       .ack(ram_ack)
   );
 
+  wire [7:0] led_n;
+  assign led = ~led_n;
   naive_soc soc (
       .clk(clk),
       .reset(~rst_n),
@@ -124,13 +132,15 @@ module quartus_top (
       .ram_rdata(ram_rdata),
       .ram_ack(ram_ack),
       .uart_rx(uart_rx),
-      .uart_tx(uart_tx)
+      .uart_tx(uart_tx),
+      .gpio_o(led_n)
   );
 
   // reset test
   always @(posedge clk) begin
-    if (!rst_n) led <= 8'b00000000;  // 时间太快，放开按键时微微一闪
-    else led <= 8'b11111111;
+    if (!rst_n)
+      {rgb_led1_r, rgb_led1_g, rgb_led1_b, rgb_led2_r, rgb_led2_g, rgb_led2_b} <= 6'b000000;  // 时间太快，放开按键时微微一闪
+    else {rgb_led1_r, rgb_led1_g, rgb_led1_b, rgb_led2_r, rgb_led2_g, rgb_led2_b} <= 6'b111111;
   end
 
 endmodule

@@ -14,3 +14,10 @@ set_location_assignment PIN_D1 -to led[5]
 set_location_assignment PIN_C2 -to led[6]
 set_location_assignment PIN_B1 -to led[7]
 
+set_location_assignment PIN_L3 -to rgb_led1_r
+set_location_assignment PIN_K5 -to rgb_led1_g
+set_location_assignment PIN_L4 -to rgb_led1_b
+set_location_assignment PIN_F3 -to rgb_led2_r
+set_location_assignment PIN_D3 -to rgb_led2_g
+set_location_assignment PIN_C3 -to rgb_led2_b
+
