@@ -44,7 +44,7 @@ jobs:
       - name: Test
         run: |
           cp build/ousia_0/src/ousia_0/Naive.v .
-          pytest test.py --numprocesses auto -k inst
+          pytest tb/test.py --numprocesses auto -k inst
   misc-tests:
     needs: get-verilog
     runs-on: ubuntu-20.04
@@ -62,4 +62,4 @@ jobs:
       - name: Test
         run: |
           cp build/ousia_0/src/ousia_0/Naive.v .
-          pytest test.py --numprocesses auto -k 'not inst'
+          pytest tb/test.py --numprocesses auto -k 'not inst'
