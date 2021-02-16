@@ -30,17 +30,17 @@ filesets:
     depend: [wb_intercon, uart16550, gpio]
   cocotb:
     files:
-      - cocotb_top.v
+      - tb/cocotb_top.v
     file_type: verilogSource
-  quartus:
+  cyc10:
     files:
-      - pin.tcl: { file_type: tclSource }
-      - timing.sdc: { file_type: SDC }
-      - pll.qip: { file_type: QIP }
-      - pll.v: { file_type: verilogSource }
-      - ram.qip: { file_type: QIP }
-      - ram.v: { file_type: verilogSource }
-      - quartus_top.v: { file_type: verilogSource }
+      - board/step-cyc10/pin.tcl: { file_type: tclSource }
+      - board/step-cyc10/timing.sdc: { file_type: SDC }
+      - board/step-cyc10/pll.qip: { file_type: QIP }
+      - board/step-cyc10/pll.v: { file_type: verilogSource }
+      - board/step-cyc10/ram.qip: { file_type: QIP }
+      - board/step-cyc10/ram.v: { file_type: verilogSource }
+      - board/step-cyc10/cyc10_top.v: { file_type: verilogSource }
 
 targets:
   default:
@@ -51,10 +51,10 @@ targets:
     tools:
       verilator:
         mode: lint-only
-  quartus:
-    filesets: [naive_soc, quartus]
+  cyc10:
+    filesets: [naive_soc, cyc10]
     generate: [wb_intercon]
-    toplevel: quartus_top
+    toplevel: cyc10_top
     default_tool: quartus
     tools:
       quartus:

@@ -51,7 +51,7 @@ module synchronizer (
     if (!asyncrst_n) {rst_n, rff1} <= 2'b0;
     else {rst_n, rff1} <= {rff1, 1'b1};
 endmodule
-module quartus_top (
+module cyc10_top (
     output reg rgb_led1_r,
     output reg rgb_led1_g,
     output reg rgb_led1_b,

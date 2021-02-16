@@ -71,7 +71,7 @@ includes = [
 
 @contextmanager
 def prepare(elf_dir, elf_name):
-    top_v = f"cocotb_top_{elf_name}.v"
+    top_v = f"tb/cocotb_top_{elf_name}.v"
     memfile = f"{getcwd()}/meminit/{elf_name}.verilog"
     dumpfile = f"{getcwd()}/meminit/{elf_name}.dump"
 
@@ -82,7 +82,7 @@ def prepare(elf_dir, elf_name):
     if not Path(dumpfile).is_file():
         system(f"riscv32-unknown-elf-objdump -D {elf_dir}/{elf_name} > {dumpfile}")
 
-    system(f"cp cocotb_top.v {top_v}")
+    system(f"cp tb/cocotb_top.v {top_v}")
     system(f"""sed -i 's|readmemh.*|readmemh("{memfile}", ram.mem);|' {top_v}""")
 
     environ["DUMPFILE"] = dumpfile  # riscv_test.py 里用

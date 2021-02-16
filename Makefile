@@ -1,4 +1,4 @@
-TOOLCHAIN_PREFIX = riscv32-unknown-elf-
+TOOLCHAIN_PREFIX = tool/riscv/bin/riscv32-unknown-elf-
 
 verilator:
 	cd tool/verilator && \
@@ -21,7 +21,7 @@ firmware/firmware.bin: firmware/firmware
 firmware/firmware.hex: firmware/firmware.bin
 	srec_cat $< -Binary -Output $@ -Intel -Output_Block_Size=4 # 32 bit a row
 
-board: firmware/firmware.hex *.v ousia.core *.qip # todo
-	fusesoc --cores-root=. run --target=quartus ousia
+cyc10: firmware/firmware.hex ousia.core board/step-cyc10 # 其实不用写，但写了清楚
+	fusesoc --cores-root=. run --target=cyc10 ousia
 
-.PHONY: verilator gcc board
+.PHONY: verilator gcc cyc10
