@@ -2,5 +2,5 @@
 	path = api-config-chipsalliance
 	url = https://github.com/chipsalliance/api-config-chipsalliance.git
 [submodule "verilator"]
-	path = verilator
+	path = tool/verilator
 	url = https://github.com/verilator/verilator.git

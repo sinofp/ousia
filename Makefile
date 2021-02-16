@@ -1,7 +1,7 @@
 TOOLCHAIN_PREFIX = riscv-sifive-elf-
 
 verilator:
-	cd verilator && \
+	cd tool/verilator && \
 	autoconf && \
 	./configure && \
 	make -j $$(nproc) && \
