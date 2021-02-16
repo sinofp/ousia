@@ -76,11 +76,11 @@ def prepare(elf_dir, elf_name):
     dumpfile = f"{getcwd()}/meminit/{elf_name}.dump"
 
     if not Path(memfile).is_file():
-        system(f"riscv-sifive-elf-objcopy {elf_dir}/{elf_name} -O verilog {memfile}")
+        system(f"riscv32-unknown-elf-objcopy {elf_dir}/{elf_name} -O verilog {memfile}")
         system(f"sed -i 's|@8|@0|g' {memfile}")
 
     if not Path(dumpfile).is_file():
-        system(f"riscv-sifive-elf-objdump -D {elf_dir}/{elf_name} > {dumpfile}")
+        system(f"riscv32-unknown-elf-objdump -D {elf_dir}/{elf_name} > {dumpfile}")
 
     system(f"cp cocotb_top.v {top_v}")
     system(f"""sed -i 's|readmemh.*|readmemh("{memfile}", ram.mem);|' {top_v}""")
@@ -95,7 +95,7 @@ def prepare(elf_dir, elf_name):
 
 @pytest.mark.parametrize("inst", insts)
 def test_inst(inst):
-    elf_dir = "/usr/riscv-sifive-elf/share/riscv-tests/isa"
+    elf_dir = "/usr/riscv32-unknown-elf/share/riscv-tests/isa"
     with prepare(elf_dir, inst) as top_v:
         simulator.run(
             verilog_sources=["Naive.v", "naive_soc.v", top_v],
