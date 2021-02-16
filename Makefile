@@ -8,7 +8,6 @@ RVTEST_OBJS = rv32mi-p-breakpoint \
 	      rv32mi-p-ma_fetch \
 	      rv32mi-p-mcsr \
 	      rv32mi-p-sbreak \
-	      rv32mi-p-scall \
 	      rv32mi-p-shamt \
 	      rv32ui-p-add \
 	      rv32ui-p-addi \
@@ -21,7 +20,6 @@ RVTEST_OBJS = rv32mi-p-breakpoint \
 	      rv32ui-p-blt \
 	      rv32ui-p-bltu \
 	      rv32ui-p-bne \
-	      rv32ui-p-fence_i \
 	      rv32ui-p-jal \
 	      rv32ui-p-jalr \
 	      rv32ui-p-lb \
@@ -49,37 +47,21 @@ RVTEST_OBJS = rv32mi-p-breakpoint \
 	      rv32ui-p-sw \
 	      rv32ui-p-xor \
 	      rv32ui-p-xori \
+	      # rv32mi-p-scall \
+	      rv32ui-p-fence_i \
 
-verilator:
-	cd tool/verilator && \
-		autoconf && \
-		./configure && \
-		make -j $$(nproc) && \
-		sudo make install
+TEST_INSTS ?= $(RVTEST_OBJS)
+PYTEST_EXTRA_ARGS = -n auto
 
-gcc:
-	cd tool/riscv-gnu-toolchain && \
-		./configure --prefix=$$PWD/tool/riscv --with-arch=rv32i --with-abi=ilp32 --disable-gdb && \
-		make -j $$(nproc)
+# [test]
+test: meminit build
+	pytest tb/test.py $(PYTEST_EXTRA_ARGS)
 
-riscv-tests:
-	cd tool/riscv-tests && \
-		git submodule update --init --recursive --depth 1 && \
-		./configure --prefix=$(RISCV) && \
-		sed -i 's|install: all|install: isa|' Makefile && \
-		make install RISCV_PREFIX=$(TOOLCHAIN_PREFIX)
+test-inst: meminit build
+	INSTS='$(TEST_INSTS)' pytest tb/test.py -k inst $(PYTEST_EXTRA_ARGS)
 
-firmware/firmware: firmware/start.S firmware/uart.S firmware/led.S
-	$(TOOLCHAIN_PREFIX)gcc -static -mcmodel=medany -fvisibility=hidden -nostdlib -nostartfiles -march=rv32i -T firmware/linker.ld -o $@ $<
-
-firmware/firmware.bin: firmware/firmware
-	$(TOOLCHAIN_PREFIX)objcopy $< -O binary $@
-
-firmware/firmware.hex: firmware/firmware.bin
-	srec_cat $< -Binary -Output $@ -Intel -Output_Block_Size=4 # 32 bit a row
-
-cyc10: firmware/firmware.hex ousia.core board/step-cyc10 # 其实不用写，但写了清楚
-	fusesoc --cores-root=. run --target=cyc10 ousia
+test-misc: meminit build
+	pytest tb/test.py -k 'not inst' $(PYTEST_EXTRA_ARGS)
 
 meminit: firmware/firmware $(RVTEST_ISA_PATH)
 	-mkdir meminit
@@ -92,9 +74,54 @@ meminit: firmware/firmware $(RVTEST_ISA_PATH)
 	$(TOOLCHAIN_PREFIX)objcopy $< -O verilog meminit/firmware.verilog
 	$(TOOLCHAIN_PREFIX)objdump -D $< > meminit/firmware.dump
 
+# [tools]
+verilator:
+	git submodule update --init --depth 1 tool/$@
+	cd tool/verilator && \
+		autoconf && \
+		./configure && \
+		make -j $$(nproc) && \
+		sudo make install
+
+gcc:
+	git submodule update --init --depth 1 tool/riscv-gnu-toolchain
+	cd tool/riscv-gnu-toolchain && \
+		./configure --prefix=$$PWD/tool/riscv --with-arch=rv32i --with-abi=ilp32 --disable-gdb && \
+		make -j $$(nproc)
+
+riscv-tests:
+	git submodule update --init --recursive --depth 1 tool/$@
+	cd tool/riscv-tests && \
+		./configure --prefix=$(RISCV) && \
+		sed -i 's|install: all|install: isa|' Makefile && \
+		make install RISCV_PREFIX=$(TOOLCHAIN_PREFIX)
+
+# [firmware]
+firmware/firmware: firmware/start.S firmware/uart.S firmware/led.S
+	$(TOOLCHAIN_PREFIX)gcc -static -mcmodel=medany -fvisibility=hidden -nostdlib -nostartfiles -march=rv32i -T firmware/linker.ld -o $@ $<
+
+firmware/firmware.bin: firmware/firmware
+	$(TOOLCHAIN_PREFIX)objcopy $< -O binary $@
+
+firmware/firmware.hex: firmware/firmware.bin
+	srec_cat $< -Binary -Output $@ -Intel -Output_Block_Size=4 # 32 bit a row
+
+# [verilog]
+Naive.v: src build.sbt
+	git submodule update --init --depth 1 tool/api-config-chipsalliance/
+	sbt run
+
+build: ousia.core Naive.v
+	fusesoc --cores-root=. run ousia
+
+# [board]
+cyc10: firmware/firmware.hex build
+	fusesoc --cores-root=. run --target=cyc10 ousia
+
+# [misc]
 clean:
 	-rm -r meminit firmware/firmware* __pycache__ build
 	cocotb-clean
 	sbt clean
 
-.PHONY: verilator gcc riscv-tests cyc10 clean
+.PHONY: verilator gcc riscv-tests cyc10 clean test-inst test-misc test
