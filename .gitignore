@@ -19,8 +19,9 @@ sim_build/
 # fusesoc
 build/
 
-# binary
+# make
 firmware/firmware
 *.bin
 *.hex
 tool/
+meminit/

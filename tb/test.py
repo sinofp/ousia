@@ -1,7 +1,6 @@
 from cocotb_test import simulator
 from os import system, getcwd, environ
 import pytest
-from pathlib import Path
 from contextlib import contextmanager
 
 insts = [
@@ -74,13 +73,6 @@ def prepare(elf_dir, elf_name):
     top_v = f"tb/cocotb_top_{elf_name}.v"
     memfile = f"{getcwd()}/meminit/{elf_name}.verilog"
     dumpfile = f"{getcwd()}/meminit/{elf_name}.dump"
-
-    if not Path(memfile).is_file():
-        system(f"riscv32-unknown-elf-objcopy {elf_dir}/{elf_name} -O verilog {memfile}")
-        system(f"sed -i 's|@8|@0|g' {memfile}")
-
-    if not Path(dumpfile).is_file():
-        system(f"riscv32-unknown-elf-objdump -D {elf_dir}/{elf_name} > {dumpfile}")
 
     system(f"cp tb/cocotb_top.v {top_v}")
     system(f"""sed -i 's|readmemh.*|readmemh("{memfile}", ram.mem);|' {top_v}""")
