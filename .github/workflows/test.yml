@@ -2,11 +2,37 @@ name: Test
 
 on:
   push:
-    branches: [master]
   pull_request:
-    branches: [master]
 
 jobs:
+  get-meminit:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt-get install autoconf automake autotools-dev curl python3 libmpc-dev libmpfr-dev libgmp-dev gawk build-essential bison flex texinfo gperf libtool patchutils bc zlib1g-dev libexpat-dev
+      - name: Get command
+        id: get-command
+        run: |
+          mkdir -p tool/riscv/share/riscv-tests/isa # needed for `make meminit`
+          make gcc riscv-tests meminit --dry-run | tee log
+          echo "::set-output name=command::$(/usr/bin/sha256sum log)" # hash of make output
+          rmdir tool/riscv/share/riscv-tests/isa
+        shell: bash
+      - uses: actions/cache@v2
+        id: cache-meminit
+        with:
+          path: meminit
+          key: ${{ runner.os }}-${{ steps.get-command.outputs.command }}
+      - name: Prepare meminit
+        if: steps.cache-meminit.outputs.cache-hit != 'true'
+        run: make gcc riscv-tests meminit
+      - uses: actions/upload-artifact@v2
+        with:
+          name: my-meminit
+          path: meminit
   get-verilog:
     runs-on: ubuntu-20.04
     steps:
@@ -19,16 +45,14 @@ jobs:
           sudo pip install fusesoc
       - name: Prepare Verilog
         run: |
-          git submodule update --init --depth 1
-          sbt run
           fusesoc init -y
-          fusesoc --cores-root=. run ousia
+          make build
       - uses: actions/upload-artifact@v2
         with:
           name: my-verilog
           path: build
   riscv-tests:
-    needs: get-verilog
+    needs: [get-verilog, get-meminit]
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
@@ -41,12 +65,14 @@ jobs:
         with:
           name: my-verilog
           path: build
+      - uses: actions/download-artifact@v2
+        with:
+          name: my-meminit
+          path: meminit
       - name: Test
-        run: |
-          cp build/ousia_0/src/ousia_0/Naive.v .
-          pytest tb/test.py --numprocesses auto -k inst
+        run: pytest tb/test.py -k inst -n auto
   misc-tests:
-    needs: get-verilog
+    needs: [get-verilog, get-meminit]
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
@@ -59,7 +85,9 @@ jobs:
         with:
           name: my-verilog
           path: build
+      - uses: actions/download-artifact@v2
+        with:
+          name: my-meminit
+          path: meminit
       - name: Test
-        run: |
-          cp build/ousia_0/src/ousia_0/Naive.v .
-          pytest tb/test.py --numprocesses auto -k 'not inst'
+        run: pytest tb/test.py -k 'not inst' -n auto

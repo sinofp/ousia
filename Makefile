@@ -84,9 +84,10 @@ verilator:
 		sudo make install
 
 gcc:
-	git submodule update --init --depth 1 tool/riscv-gnu-toolchain
+	# 不能用submodule，因为riscv-gnu-toolchain/.git必须是目录，不能是文件
+	git clone --depth 1 https://github.com/riscv/riscv-gnu-toolchain tool/riscv-gnu-toolchain
 	cd tool/riscv-gnu-toolchain && \
-		./configure --prefix=$$PWD/tool/riscv --with-arch=rv32i --with-abi=ilp32 --disable-gdb && \
+		./configure --prefix=$(RISCV) --with-arch=rv32i --with-abi=ilp32 --disable-gdb && \
 		make -j $$(nproc)
 
 riscv-tests:

@@ -4,9 +4,6 @@
 [submodule "verilator"]
 	path = tool/verilator
 	url = https://github.com/verilator/verilator.git
-[submodule "tool/riscv-gnu-toolchain"]
-	path = tool/riscv-gnu-toolchain
-	url = https://github.com/riscv/riscv-gnu-toolchain.git
 [submodule "tool/riscv-tests"]
 	path = tool/riscv-tests
 	url = https://github.com/riscv/riscv-tests.git

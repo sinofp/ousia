@@ -41,7 +41,7 @@ def test_inst(inst):
     elf_dir = "/usr/riscv32-unknown-elf/share/riscv-tests/isa"
     with prepare(elf_dir, inst) as top_v:
         simulator.run(
-            verilog_sources=["Naive.v", "naive_soc.v", top_v],
+            verilog_sources=["build/ousia_0/src/ousia_0/Naive.v", "naive_soc.v", top_v],
             includes=includes,
             toplevel="cocotb_top",
             module="riscv_test",
@@ -53,7 +53,7 @@ def test_inst(inst):
 def test_firmware():
     with prepare("firmware", "firmware") as top_v:
         simulator.run(
-            verilog_sources=["Naive.v", "naive_soc.v", top_v],
+            verilog_sources=["build/ousia_0/src/ousia_0/Naive.v", "naive_soc.v", top_v],
             includes=includes,
             toplevel="cocotb_top",
             module="firmware_test",
