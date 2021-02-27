@@ -98,7 +98,7 @@ riscv-tests:
 		make install RISCV_PREFIX=$(TOOLCHAIN_PREFIX)
 
 # [firmware]
-firmware/firmware: firmware/start.S firmware/uart.S firmware/led.S
+firmware/firmware: firmware/start.S firmware/linker.ld
 	$(TOOLCHAIN_PREFIX)gcc -static -mcmodel=medany -fvisibility=hidden -nostdlib -nostartfiles -march=rv32i -T firmware/linker.ld -o $@ $<
 
 firmware/firmware.bin: firmware/firmware
