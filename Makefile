@@ -1,57 +1,23 @@
 RISCV = $(PWD)/tool/riscv
 TOOLCHAIN_PREFIX = $(RISCV)/bin/riscv32-unknown-elf-
-RVTEST_ISA_PATH = $(RISCV)/share/riscv-tests/isa
-RVTEST_OBJS = rv32mi-p-breakpoint \
-	      rv32mi-p-csr \
-	      rv32mi-p-illegal \
-	      rv32mi-p-ma_addr \
-	      rv32mi-p-ma_fetch \
-	      rv32mi-p-mcsr \
-	      rv32mi-p-sbreak \
-	      rv32mi-p-shamt \
-	      rv32ui-p-add \
-	      rv32ui-p-addi \
-	      rv32ui-p-and \
-	      rv32ui-p-andi \
-	      rv32ui-p-auipc \
-	      rv32ui-p-beq \
-	      rv32ui-p-bge \
-	      rv32ui-p-bgeu \
-	      rv32ui-p-blt \
-	      rv32ui-p-bltu \
-	      rv32ui-p-bne \
-	      rv32ui-p-jal \
-	      rv32ui-p-jalr \
-	      rv32ui-p-lb \
-	      rv32ui-p-lbu \
-	      rv32ui-p-lh \
-	      rv32ui-p-lhu \
-	      rv32ui-p-lui \
-	      rv32ui-p-lw \
-	      rv32ui-p-or \
-	      rv32ui-p-ori \
-	      rv32ui-p-sb \
-	      rv32ui-p-sh \
-	      rv32ui-p-simple \
-	      rv32ui-p-sll \
-	      rv32ui-p-slli \
-	      rv32ui-p-slt \
-	      rv32ui-p-slti \
-	      rv32ui-p-sltiu \
-	      rv32ui-p-sltu \
-	      rv32ui-p-sra \
-	      rv32ui-p-srai \
-	      rv32ui-p-srl \
-	      rv32ui-p-srli \
-	      rv32ui-p-sub \
-	      rv32ui-p-sw \
-	      rv32ui-p-xor \
-	      rv32ui-p-xori \
-	      # rv32mi-p-scall \
-	      rv32ui-p-fence_i \
 
+RVTEST_ISA_PATH = $(RISCV)/share/riscv-tests/isa
+RVTEST_OBJS = rv32mi-p-breakpoint  rv32mi-p-csr  rv32mi-p-illegal  rv32mi-p-ma_addr \
+	      rv32mi-p-ma_fetch  rv32mi-p-mcsr  rv32mi-p-sbreak  rv32mi-p-shamt \
+	      rv32ui-p-add  rv32ui-p-addi  rv32ui-p-and  rv32ui-p-andi \
+	      rv32ui-p-auipc  rv32ui-p-beq  rv32ui-p-bge  rv32ui-p-bgeu \
+	      rv32ui-p-blt  rv32ui-p-bltu  rv32ui-p-bne  rv32ui-p-jal \
+	      rv32ui-p-jalr  rv32ui-p-lb  rv32ui-p-lbu  rv32ui-p-lh \
+	      rv32ui-p-lhu  rv32ui-p-lui  rv32ui-p-lw  rv32ui-p-or \
+	      rv32ui-p-ori  rv32ui-p-sb  rv32ui-p-sh  rv32ui-p-simple \
+	      rv32ui-p-sll  rv32ui-p-slli  rv32ui-p-slt  rv32ui-p-slti \
+	      rv32ui-p-sltiu  rv32ui-p-sltu  rv32ui-p-sra  rv32ui-p-srai \
+	      rv32ui-p-srl  rv32ui-p-srli  rv32ui-p-sub  rv32ui-p-sw \
+	      rv32ui-p-xor  rv32ui-p-xori  # rv32mi-p-scall  rv32ui-p-fence_i
 TEST_INSTS ?= $(RVTEST_OBJS)
 PYTEST_EXTRA_ARGS = -n auto
+
+FIRMWARE_RVTEST_OBJS = addi and auipc bge jalr jal lui sra
 
 # [test]
 test: meminit build
@@ -98,14 +64,22 @@ riscv-tests:
 		make install RISCV_PREFIX=$(TOOLCHAIN_PREFIX)
 
 # [firmware]
-firmware/firmware: firmware/start.S firmware/linker.ld
-	$(TOOLCHAIN_PREFIX)gcc -static -mcmodel=medany -fvisibility=hidden -nostdlib -nostartfiles -march=rv32i -T firmware/linker.ld -o $@ $<
+firmware/firmware: firmware/start.o firmware/linker.ld $(addprefix firmware/,$(addsuffix .o,$(FIRMWARE_RVTEST_OBJS)))
+	$(TOOLCHAIN_PREFIX)gcc -Os -ffreestanding -nostdlib -o $@ \
+		-Wl,-Bstatic,-T,firmware/linker.ld,-Map,firmware/firmware.map,--strip-debug \
+		firmware/start.o $(addprefix firmware/,$(addsuffix .o,$(FIRMWARE_RVTEST_OBJS))) -lgcc
 
 firmware/firmware.bin: firmware/firmware
 	$(TOOLCHAIN_PREFIX)objcopy $< -O binary $@
 
 firmware/firmware.hex: firmware/firmware.bin
 	srec_cat $< -Binary -Output $@ -Intel -Output_Block_Size=4 # 32 bit a row
+
+firmware/start.o: firmware/start.S
+	$(TOOLCHAIN_PREFIX)gcc -c -march=rv32i -o $@ $<
+
+firmware/%.o: tool/riscv-tests/isa/rv32ui/%.S firmware/riscv_test.h
+	$(TOOLCHAIN_PREFIX)gcc -c -march=rv32i -Ifirmware -Itool/riscv-tests/isa/macros/scalar -DTEST_NAME=$(notdir $(basename $@)) -o $@ $<
 
 # [verilog]
 Naive.v: src build.sbt

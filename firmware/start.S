@@ -1,11 +1,25 @@
 #define LED_BASE 0x20000000
+
 #define UART_BASE 0x10000000
 #define DLB1 0
 #define DLB2 1*4
 #define LCR 3*4
 #define LS 5*4
 
+#define TEST(name)           \
+        .globl name;         \
+	.globl name ## _ret; \
+	j name;              \
+name ## _ret:
+
 .globl _start
+.globl put_str
+.globl dead_loop
+.globl str_tab
+.globl str_crlf
+.globl str_ok
+.globl str_err
+
 _start:
     # LED
     li a1, 0b00000001
@@ -14,17 +28,29 @@ _start:
     # UART
     jal uart_init
 
-    la a1, str1
+    la a1, str_uart
+    jal put_str
+    la a1, str_tab
+    jal put_str
+    la a1, str_ok
+    jal put_str
+    la a1, str_crlf
     jal put_str
 
-    la a1, str2
-    jal put_str
-
-    la a1, str3
-    jal put_str
+    # RVTEST
+    TEST(addi)
+    TEST(and)
+    TEST(auipc)
+    TEST(bge)
+    TEST(jalr)
+    TEST(jal)
+    TEST(lui)
+    TEST(sra)
 
     # END
-    j dead_loop
+    la a1, str_crlf
+    jal put_str
+    j _start
 
 set_led: # pass a1, 1 on 0 off
     li a0, LED_BASE
@@ -74,9 +100,13 @@ dead_loop:
     j dead_loop
 
 .data
-str1:
-    .string "UART OK!!\r\n"
-str2:
-    .string "Who are you?\r\n"
-str3:
-    .string "Who am I??\r\n"
+str_uart:
+    .string "UART"
+str_tab:
+    .string "\t"
+str_crlf:
+    .string "\r\n"
+str_ok:
+    .string "OK"
+str_err:
+    .string "ERR"

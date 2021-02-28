@@ -49,9 +49,9 @@ async def firmware_test(dut):
     string = []
     while True:
         string.append(await fake_uart.recv(dut.soc.uart_tx))
-        if "".join(string) == "UA":  # "UART OK!!\r\n":
+        if "".join(string) == "UA":  # "UART\tOK\r\n":
             break
 
-    assert dut.gpio_o == int("01010101", 2), "gpio_o is {:b}".format(
+    assert dut.gpio_o == int("00000001", 2), "gpio_o is {:b}".format(
         dut.gpio_o.value.integer
     )

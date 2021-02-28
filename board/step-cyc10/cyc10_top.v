@@ -13,6 +13,7 @@ module wb_ram (
 
   wire [31:0] q;
   assign rdata = {q[7:0], q[15:8], q[23:16], q[31:24]};
+  assign data = {wdata[7:0], wdata[15:8], wdata[23:16], wdata[31:24]};
   ram mem (
 `ifdef MODEL_TECH
       .address(addr[31:2]),
@@ -21,7 +22,7 @@ module wb_ram (
 `endif
       .byteena(sel),
       .clock(clk),
-      .data(wdata),  // 换顺序？
+      .data(data),  // 换顺序？
       .rden(cyc & stb & ~we),
       .wren(cyc & stb & we),
       .q(q)

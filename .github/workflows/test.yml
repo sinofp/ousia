@@ -16,6 +16,7 @@ jobs:
       - name: Get command
         id: get-command
         run: |
+          git submodule update --init --depth 1 tool/riscv-tests
           mkdir -p tool/riscv/share/riscv-tests/isa # needed for `make meminit`
           make gcc riscv-tests meminit --dry-run | tee log
           echo "::set-output name=command::$(/usr/bin/sha256sum log)" # hash of make output

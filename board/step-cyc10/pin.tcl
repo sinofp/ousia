@@ -1,3 +1,5 @@
+set_global_assignment -name NUM_PARALLEL_PROCESSORS ALL
+
 package require ::quartus::project
 
 set_location_assignment PIN_M15 -to clk_50m

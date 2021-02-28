@@ -23,5 +23,7 @@ build/
 firmware/firmware
 *.bin
 *.hex
+*.o
+*.map
 tool/
 meminit/

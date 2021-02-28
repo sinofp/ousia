@@ -13,7 +13,7 @@ generate:
       slaves:
         ram:
           offset: 0
-          size: 0x20000 # 16KB
+          size: 0x40000 # 32KB
         uart:
           offset: 0x10000000
           size: 0x10000000
