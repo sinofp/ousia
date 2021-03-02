@@ -17,7 +17,7 @@ RVTEST_OBJS = rv32mi-p-breakpoint  rv32mi-p-csr  rv32mi-p-illegal  rv32mi-p-ma_a
 TEST_INSTS ?= $(RVTEST_OBJS)
 PYTEST_EXTRA_ARGS = -n auto
 
-FIRMWARE_RVTEST_OBJS = addi and auipc bge jalr jal lui sra
+FIRMWARE_RVTEST_OBJS = #addi and auipc bge jalr #jal lui sra add beq bne
 
 # [test]
 test: meminit build
@@ -64,10 +64,10 @@ riscv-tests:
 		make install RISCV_PREFIX=$(TOOLCHAIN_PREFIX)
 
 # [firmware]
-firmware/firmware: firmware/start.o firmware/linker.ld $(addprefix firmware/,$(addsuffix .o,$(FIRMWARE_RVTEST_OBJS)))
+firmware/firmware: firmware/start.o firmware/ram_test.o firmware/linker.ld $(addprefix firmware/,$(addsuffix .o,$(FIRMWARE_RVTEST_OBJS)))
 	$(TOOLCHAIN_PREFIX)gcc -Os -ffreestanding -nostdlib -o $@ \
 		-Wl,-Bstatic,-T,firmware/linker.ld,-Map,firmware/firmware.map,--strip-debug \
-		firmware/start.o $(addprefix firmware/,$(addsuffix .o,$(FIRMWARE_RVTEST_OBJS))) -lgcc
+		firmware/start.o firmware/ram_test.o $(addprefix firmware/,$(addsuffix .o,$(FIRMWARE_RVTEST_OBJS))) -lgcc
 
 firmware/firmware.bin: firmware/firmware
 	$(TOOLCHAIN_PREFIX)objcopy $< -O binary $@
@@ -77,6 +77,9 @@ firmware/firmware.hex: firmware/firmware.bin
 
 firmware/start.o: firmware/start.S
 	$(TOOLCHAIN_PREFIX)gcc -c -march=rv32i -o $@ $<
+
+firmware/ram_test.o: firmware/ram_test.py
+	python $< | $(TOOLCHAIN_PREFIX)gcc -c -x assembler-with-cpp -march=rv32i -Ifirmware -DTEST_NAME=ram_test -o $@ -
 
 firmware/%.o: tool/riscv-tests/isa/rv32ui/%.S firmware/riscv_test.h
 	$(TOOLCHAIN_PREFIX)gcc -c -march=rv32i -Ifirmware -Itool/riscv-tests/isa/macros/scalar -DTEST_NAME=$(notdir $(basename $@)) -o $@ $<

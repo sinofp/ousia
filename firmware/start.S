@@ -38,19 +38,16 @@ _start:
     jal put_str
 
     # RVTEST
-    TEST(addi)
-    TEST(and)
-    TEST(auipc)
-    TEST(bge)
-    TEST(jalr)
-    TEST(jal)
-    TEST(lui)
-    TEST(sra)
+    TEST(ram_test)
+
+    li a1, 0b00000000
+    jal set_led
 
     # END
-    la a1, str_crlf
-    jal put_str
-    j _start
+    #la a1, str_crlf
+    #jal put_str
+    #j _start
+    j dead_loop
 
 set_led: # pass a1, 1 on 0 off
     li a0, LED_BASE
