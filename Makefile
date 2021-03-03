@@ -75,6 +75,10 @@ firmware/firmware.bin: firmware/firmware
 firmware/firmware.hex: firmware/firmware.bin firmware/makeihex.py
 	python firmware/makeihex.py $< > $@
 
+# 其实00到11都生成了
+firmware/firmware00.hex: firmware/firmware.bin firmware/makeihex_8bit.py
+	python firmware/makeihex_8bit.py $<
+
 firmware/start.o: firmware/start.S
 	$(TOOLCHAIN_PREFIX)gcc -c -march=rv32i -o $@ $<
 
@@ -93,7 +97,7 @@ build: ousia.core Naive.v
 	fusesoc --cores-root=. run ousia
 
 # [board]
-cyc10: firmware/firmware.hex build
+cyc10: firmware/firmware00.hex build
 	fusesoc --cores-root=. run --target=cyc10 ousia
 
 # [misc]

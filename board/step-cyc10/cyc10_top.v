@@ -11,27 +11,58 @@ module wb_ram (
     output reg        ack
 );
 
-  wire [31:0] q;
-  assign rdata = {q[7:0], q[15:8], q[23:16], q[31:24]};
-  assign data = {wdata[7:0], wdata[15:8], wdata[23:16], wdata[31:24]};
-  ram mem (
-`ifdef MODEL_TECH
-      .address(addr[31:2]),
-`else
-      .address(addr),
-`endif
-      .byteena(sel),
+  wire [29:0] address = addr[31:2];
+  wire req = cyc & stb;
+  wire rden = req & ~we;
+  wire wren = req & we;
+  ram #(
+      .init_file("../../../firmware/firmware00.hex")
+  ) ram00 (
+      .address(address),
       .clock(clk),
-      .data(data),  // 换顺序？
-      .rden(cyc & stb & ~we),
-      .wren(cyc & stb & we),
-      .q(q)
+      .data(wdata[7:0]),
+      .rden(rden),
+      .wren(wren),
+      .q(rdata[7:0])
+  );
+
+  ram #(
+      .init_file("../../../firmware/firmware01.hex")
+  ) ram01 (
+      .address(address),
+      .clock(clk),
+      .data(wdata[15:8]),
+      .rden(rden),
+      .wren(wren),
+      .q(rdata[15:8])
+  );
+
+  ram #(
+      .init_file("../../../firmware/firmware10.hex")
+  ) ram10 (
+      .address(address),
+      .clock(clk),
+      .data(wdata[23:16]),
+      .rden(rden),
+      .wren(wren),
+      .q(rdata[23:16])
+  );
+
+  ram #(
+      .init_file("../../../firmware/firmware11.hex")
+  ) ram11 (
+      .address(address),
+      .clock(clk),
+      .data(wdata[31:24]),
+      .rden(rden),
+      .wren(wren),
+      .q(rdata[31:24])
   );
 
   reg ack1;  // 拖一个周期
   always @(posedge clk) begin
     ack1 <= 1'b0;
-    if (cyc & stb & ~ack & ~ack1) begin
+    if (req & ~ack & ~ack1) begin
       ack1 <= 1'b1;
     end
   end

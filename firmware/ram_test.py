@@ -21,13 +21,7 @@ jal put_str
 dot_string = '''str{}:
     .string "{:x}"'''
 
-# dot_string = '''.align 4
-# str{}:
-#     .string "{:x}"'''
-
-# 292, 8185KB, OK
-# 293, 8221KB, not OK
-num = 293
+num = 1142
 
 print(begin)
 

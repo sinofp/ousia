@@ -1,7 +1,7 @@
 // megafunction wizard: %RAM: 1-PORT%
 // GENERATION: STANDARD
 // VERSION: WM1.0
-// MODULE: altsyncram 
+// MODULE: altsyncram
 
 // ============================================================
 // File Name: ram.v
@@ -19,12 +19,12 @@
 
 
 //Copyright (C) 2020  Intel Corporation. All rights reserved.
-//Your use of Intel Corporation's design tools, logic functions 
-//and other software and tools, and any partner logic 
-//functions, and any output files from any of the foregoing 
-//(including device programming or simulation files), and any 
-//associated documentation or information are expressly subject 
-//to the terms and conditions of the Intel Program License 
+//Your use of Intel Corporation's design tools, logic functions
+//and other software and tools, and any partner logic
+//functions, and any output files from any of the foregoing
+//(including device programming or simulation files), and any
+//associated documentation or information are expressly subject
+//to the terms and conditions of the Intel Program License
 //Subscription Agreement, the Intel Quartus Prime License Agreement,
 //the Intel FPGA IP License Agreement, or other applicable license
 //agreement, including, without limitation, that your use is for
@@ -37,9 +37,10 @@
 // synopsys translate_off
 `timescale 1 ps / 1 ps
 // synopsys translate_on
-module ram (
+module ram #(
+	parameter init_file = "../../../firmware/firmware.hex"
+) (
 	address,
-	byteena,
 	clock,
 	data,
 	rden,
@@ -47,28 +48,25 @@ module ram (
 	q);
 
 	input	[12:0]  address;
-	input	[3:0]  byteena;
 	input	  clock;
-	input	[31:0]  data;
+	input	[7:0]  data;
 	input	  rden;
 	input	  wren;
-	output	[31:0]  q;
+	output	[7:0]  q;
 `ifndef ALTERA_RESERVED_QIS
 // synopsys translate_off
 `endif
-	tri1	[3:0]  byteena;
 	tri1	  clock;
 	tri1	  rden;
 `ifndef ALTERA_RESERVED_QIS
 // synopsys translate_on
 `endif
 
-	wire [31:0] sub_wire0;
-	wire [31:0] q = sub_wire0[31:0];
+	wire [7:0] sub_wire0;
+	wire [7:0] q = sub_wire0[7:0];
 
 	altsyncram	altsyncram_component (
 				.address_a (address),
-				.byteena_a (byteena),
 				.clock0 (clock),
 				.data_a (data),
 				.rden_a (rden),
@@ -79,6 +77,7 @@ module ram (
 				.address_b (1'b1),
 				.addressstall_a (1'b0),
 				.addressstall_b (1'b0),
+				.byteena_a (1'b1),
 				.byteena_b (1'b1),
 				.clock1 (1'b1),
 				.clocken0 (1'b1),
@@ -91,15 +90,9 @@ module ram (
 				.rden_b (1'b1),
 				.wren_b (1'b0));
 	defparam
-		altsyncram_component.byte_size = 8,
 		altsyncram_component.clock_enable_input_a = "BYPASS",
 		altsyncram_component.clock_enable_output_a = "BYPASS",
-`ifdef NO_PLI
-		altsyncram_component.init_file = "../../../firmware/firmware.rif"
-`else
-		altsyncram_component.init_file = "../../../firmware/firmware.hex"
-`endif
-,
+		altsyncram_component.init_file = init_file,
 		altsyncram_component.intended_device_family = "Cyclone 10 LP",
 		altsyncram_component.lpm_hint = "ENABLE_RUNTIME_MOD=NO",
 		altsyncram_component.lpm_type = "altsyncram",
@@ -110,8 +103,8 @@ module ram (
 		altsyncram_component.power_up_uninitialized = "FALSE",
 		altsyncram_component.read_during_write_mode_port_a = "NEW_DATA_NO_NBE_READ",
 		altsyncram_component.widthad_a = 13,
-		altsyncram_component.width_a = 32,
-		altsyncram_component.width_byteena_a = 4;
+		altsyncram_component.width_a = 8,
+		altsyncram_component.width_byteena_a = 1;
 
 
 endmodule
@@ -124,7 +117,7 @@ endmodule
 // Retrieval info: PRIVATE: AclrByte NUMERIC "0"
 // Retrieval info: PRIVATE: AclrData NUMERIC "0"
 // Retrieval info: PRIVATE: AclrOutput NUMERIC "0"
-// Retrieval info: PRIVATE: BYTE_ENABLE NUMERIC "1"
+// Retrieval info: PRIVATE: BYTE_ENABLE NUMERIC "0"
 // Retrieval info: PRIVATE: BYTE_SIZE NUMERIC "8"
 // Retrieval info: PRIVATE: BlankMemory NUMERIC "0"
 // Retrieval info: PRIVATE: CLOCK_ENABLE_INPUT_A NUMERIC "0"
@@ -150,10 +143,9 @@ endmodule
 // Retrieval info: PRIVATE: UseDQRAM NUMERIC "1"
 // Retrieval info: PRIVATE: WRCONTROL_ACLR_A NUMERIC "0"
 // Retrieval info: PRIVATE: WidthAddr NUMERIC "13"
-// Retrieval info: PRIVATE: WidthData NUMERIC "32"
+// Retrieval info: PRIVATE: WidthData NUMERIC "8"
 // Retrieval info: PRIVATE: rden NUMERIC "1"
 // Retrieval info: LIBRARY: altera_mf altera_mf.altera_mf_components.all
-// Retrieval info: CONSTANT: BYTE_SIZE NUMERIC "8"
 // Retrieval info: CONSTANT: CLOCK_ENABLE_INPUT_A STRING "BYPASS"
 // Retrieval info: CONSTANT: CLOCK_ENABLE_OUTPUT_A STRING "BYPASS"
 // Retrieval info: CONSTANT: INIT_FILE STRING "../../../firmware/firmware.hex"
@@ -167,22 +159,20 @@ endmodule
 // Retrieval info: CONSTANT: POWER_UP_UNINITIALIZED STRING "FALSE"
 // Retrieval info: CONSTANT: READ_DURING_WRITE_MODE_PORT_A STRING "NEW_DATA_NO_NBE_READ"
 // Retrieval info: CONSTANT: WIDTHAD_A NUMERIC "13"
-// Retrieval info: CONSTANT: WIDTH_A NUMERIC "32"
-// Retrieval info: CONSTANT: WIDTH_BYTEENA_A NUMERIC "4"
+// Retrieval info: CONSTANT: WIDTH_A NUMERIC "8"
+// Retrieval info: CONSTANT: WIDTH_BYTEENA_A NUMERIC "1"
 // Retrieval info: USED_PORT: address 0 0 13 0 INPUT NODEFVAL "address[12..0]"
-// Retrieval info: USED_PORT: byteena 0 0 4 0 INPUT VCC "byteena[3..0]"
 // Retrieval info: USED_PORT: clock 0 0 0 0 INPUT VCC "clock"
-// Retrieval info: USED_PORT: data 0 0 32 0 INPUT NODEFVAL "data[31..0]"
-// Retrieval info: USED_PORT: q 0 0 32 0 OUTPUT NODEFVAL "q[31..0]"
+// Retrieval info: USED_PORT: data 0 0 8 0 INPUT NODEFVAL "data[7..0]"
+// Retrieval info: USED_PORT: q 0 0 8 0 OUTPUT NODEFVAL "q[7..0]"
 // Retrieval info: USED_PORT: rden 0 0 0 0 INPUT VCC "rden"
 // Retrieval info: USED_PORT: wren 0 0 0 0 INPUT NODEFVAL "wren"
 // Retrieval info: CONNECT: @address_a 0 0 13 0 address 0 0 13 0
-// Retrieval info: CONNECT: @byteena_a 0 0 4 0 byteena 0 0 4 0
 // Retrieval info: CONNECT: @clock0 0 0 0 0 clock 0 0 0 0
-// Retrieval info: CONNECT: @data_a 0 0 32 0 data 0 0 32 0
+// Retrieval info: CONNECT: @data_a 0 0 8 0 data 0 0 8 0
 // Retrieval info: CONNECT: @rden_a 0 0 0 0 rden 0 0 0 0
 // Retrieval info: CONNECT: @wren_a 0 0 0 0 wren 0 0 0 0
-// Retrieval info: CONNECT: q 0 0 32 0 @q_a 0 0 32 0
+// Retrieval info: CONNECT: q 0 0 8 0 @q_a 0 0 8 0
 // Retrieval info: GEN_FILE: TYPE_NORMAL ram.v TRUE
 // Retrieval info: GEN_FILE: TYPE_NORMAL ram.inc FALSE
 // Retrieval info: GEN_FILE: TYPE_NORMAL ram.cmp FALSE
