@@ -72,8 +72,8 @@ firmware/firmware: firmware/start.o firmware/ram_test.o firmware/linker.ld $(add
 firmware/firmware.bin: firmware/firmware
 	$(TOOLCHAIN_PREFIX)objcopy $< -O binary $@
 
-firmware/firmware.hex: firmware/firmware.bin
-	srec_cat $< -Binary -Output $@ -Intel -Output_Block_Size=4 # 32 bit a row
+firmware/firmware.hex: firmware/firmware.bin firmware/makeihex.py
+	python firmware/makeihex.py $< > $@
 
 firmware/start.o: firmware/start.S
 	$(TOOLCHAIN_PREFIX)gcc -c -march=rv32i -o $@ $<
