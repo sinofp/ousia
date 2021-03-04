@@ -21,6 +21,10 @@ name ## _ret:
 .globl str_err
 
 _start:
+    # INIT
+    la t0, xcpt_handler
+    csrw mtvec, t0
+
     # LED
     li a1, 0b00000001
     jal set_led
@@ -38,15 +42,102 @@ _start:
     jal put_str
 
     # RVTEST
+    TEST(addi)
+    TEST(add)
+    TEST(andi)
+    TEST(and)
+    TEST(auipc)
+    TEST(beq)
+    TEST(bge)
+    TEST(bgeu)
+    TEST(blt)
+    TEST(bltu)
+    TEST(bne)
+    TEST(jalr)
+    TEST(jal)
+    TEST(lb)
+    TEST(lbu)
+    TEST(lui)
+    TEST(ori)
+    TEST(or)
+    TEST(sb)
+    TEST(slli)
+    TEST(sll)
+    TEST(slti)
+    TEST(sltiu)
+    TEST(slt)
+    TEST(sltu)
+    TEST(srai)
+    TEST(sra)
+    TEST(srli)
+    TEST(srl)
+    TEST(sub)
+    TEST(xori)
+    TEST(xor)
+
     TEST(ram_test)
+    TEST(lw)
 
     li a1, 0b00000000
     jal set_led
 
     # END
-    #la a1, str_crlf
-    #jal put_str
-    #j _start
+    # la a1, str_crlf
+    # jal put_str
+    # j _start
+    j dead_loop
+
+xcpt_handler:
+    la a1, str_crlf
+    jal put_str
+    la a1, str_xcpt
+    jal put_str
+    la a1, str_tab
+    jal put_str
+    csrr t0, mcause
+xcpt_illegal_instruction:
+    li t1, 0x2
+    bne t0, t1, xcpt_machine_ecall
+    la a1, str_illegal_instruction
+    jal put_str
+    j xcpt_handler_end
+xcpt_machine_ecall:
+    li t1, 0xb
+    bne t0, t1, xcpt_breakpoint
+    la a1, str_machine_ecall
+    jal put_str
+    j xcpt_handler_end
+xcpt_breakpoint:
+    li t1, 0x3
+    bne t0, t1, xcpt_misaligned_fetch
+    la a1, str_breakpoint
+    jal put_str
+    j xcpt_handler_end
+xcpt_misaligned_fetch:
+    li t1, 0x0
+    bne t0, t1, xcpt_misaligned_store
+    la a1, str_misaligned_fetch
+    jal put_str
+    j xcpt_handler_end
+xcpt_misaligned_store:
+    li t1, 0x6
+    bne t0, t1, xcpt_misaligned_load
+    la a1, str_misaligned_store
+    jal put_str
+    j xcpt_handler_end
+xcpt_misaligned_load:
+    li t1, 0x4
+    bne t0, t1, xcpt_other
+    la a1, str_misaligned_load
+    jal put_str
+    j xcpt_handler_end
+xcpt_other:
+    la a1, str_other
+    jal put_str
+    j xcpt_handler_end
+xcpt_handler_end:
+    la a1, str_crlf
+    jal put_str
     j dead_loop
 
 set_led: # pass a1, 1 on 0 off
@@ -107,3 +198,19 @@ str_ok:
     .string "OK"
 str_err:
     .string "ERR"
+str_xcpt:
+    .string "exception:"
+str_illegal_instruction:
+    .string "illegal instruction"
+str_machine_ecall:
+    .string "machine ecall"
+str_breakpoint:
+    .string "breakpoint"
+str_misaligned_fetch:
+    .string "misaligned_fetch"
+str_misaligned_store:
+    .string "misaligned_store"
+str_misaligned_load:
+    .string "misaligned_load"
+str_other:
+    .string "other"

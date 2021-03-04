@@ -21,8 +21,8 @@ module wb_ram (
       .address(address),
       .clock(clk),
       .data(wdata[7:0]),
-      .rden(rden),
-      .wren(wren),
+      .rden(rden & sel[0]),
+      .wren(wren & sel[0]),
       .q(rdata[7:0])
   );
 
@@ -32,8 +32,8 @@ module wb_ram (
       .address(address),
       .clock(clk),
       .data(wdata[15:8]),
-      .rden(rden),
-      .wren(wren),
+      .rden(rden & sel[1]),
+      .wren(wren & sel[1]),
       .q(rdata[15:8])
   );
 
@@ -43,8 +43,8 @@ module wb_ram (
       .address(address),
       .clock(clk),
       .data(wdata[23:16]),
-      .rden(rden),
-      .wren(wren),
+      .rden(rden & sel[2]),
+      .wren(wren & sel[2]),
       .q(rdata[23:16])
   );
 
@@ -54,8 +54,8 @@ module wb_ram (
       .address(address),
       .clock(clk),
       .data(wdata[31:24]),
-      .rden(rden),
-      .wren(wren),
+      .rden(rden & sel[3]),
+      .wren(wren % sel[3]),
       .q(rdata[31:24])
   );
 

@@ -17,7 +17,11 @@ RVTEST_OBJS = rv32mi-p-breakpoint  rv32mi-p-csr  rv32mi-p-illegal  rv32mi-p-ma_a
 TEST_INSTS ?= $(RVTEST_OBJS)
 PYTEST_EXTRA_ARGS = -n auto
 
-FIRMWARE_RVTEST_OBJS = #addi and auipc bge jalr #jal lui sra add beq bne
+FIRMWARE_RVTEST_OBJS = addi add andi and auipc beq bge bgeu \
+		       blt bltu bne jalr jal lb lbu sb \
+		       slli sll slti sltiu slt sltu srai sra \
+		       srli srl sub xori xor ram_test \
+		       ori or lui lw # lh lhu sh fence_i
 
 # [test]
 test: meminit build
@@ -64,13 +68,14 @@ riscv-tests:
 		make install RISCV_PREFIX=$(TOOLCHAIN_PREFIX)
 
 # [firmware]
-firmware/firmware: firmware/start.o firmware/ram_test.o firmware/linker.ld $(addprefix firmware/,$(addsuffix .o,$(FIRMWARE_RVTEST_OBJS)))
+firmware/firmware: firmware/start.o firmware/linker.ld $(addprefix firmware/,$(addsuffix .o,$(FIRMWARE_RVTEST_OBJS)))
 	$(TOOLCHAIN_PREFIX)gcc -Os -ffreestanding -nostdlib -o $@ \
 		-Wl,-Bstatic,-T,firmware/linker.ld,-Map,firmware/firmware.map,--strip-debug \
-		firmware/start.o firmware/ram_test.o $(addprefix firmware/,$(addsuffix .o,$(FIRMWARE_RVTEST_OBJS))) -lgcc
+		firmware/start.o $(addprefix firmware/,$(addsuffix .o,$(FIRMWARE_RVTEST_OBJS))) -lgcc
 
 firmware/firmware.bin: firmware/firmware
 	$(TOOLCHAIN_PREFIX)objcopy $< -O binary $@
+	[[ '0' == $$(echo "$$(du -h firmware/firmware.bin | cut -f1)>32K" | bc) ]] # too big
 
 firmware/firmware.hex: firmware/firmware.bin firmware/makeihex.py
 	python firmware/makeihex.py $< > $@

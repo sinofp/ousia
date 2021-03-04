@@ -13,7 +13,7 @@
         .globl TEST_NAME;           \
         .globl TEST_NAME_RET;       \
 	.globl str_tab;             \
-	.globl str_crlf;             \
+	.globl str_crlf;            \
 	.globl str_ok;              \
         .globl str_err;             \
 TEST_NAME:                          \
@@ -22,23 +22,23 @@ TEST_NAME:                          \
 	la a1, str_tab;             \
 	jal put_str;
 
-#define RVTEST_CODE_END             \
-        j TEST_NAME_RET;
+#define RVTEST_CODE_END
 
 #define RVTEST_PASS                 \
         la a1, str_ok;              \
         jal put_str;                \
         la a1, str_crlf;            \
-        jal put_str;
+        jal put_str;                \
+        j TEST_NAME_RET;
 
 #define RVTEST_FAIL                 \
         la a1, str_err;             \
         jal put_str;                \
         la a1, str_crlf;            \
-        jal put_str;
+        jal put_str;                \
+        j TEST_NAME_RET;
 
 #define RVTEST_DATA_BEGIN           \
-        .align 4;                   \
 str_test_name:                      \
 	.string TEST_NAME_STR;
 

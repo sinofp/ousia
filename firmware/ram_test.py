@@ -21,7 +21,7 @@ jal put_str
 dot_string = '''str{}:
     .string "{:x}"'''
 
-num = 1142
+num = 10
 
 print(begin)
 
