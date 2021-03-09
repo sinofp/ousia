@@ -40,6 +40,7 @@ TEST_NAME:                          \
 
 #define RVTEST_DATA_BEGIN           \
 str_test_name:                      \
-	.string TEST_NAME_STR;
+	.string TEST_NAME_STR;      \
+.align 4;
 
 #define RVTEST_DATA_END

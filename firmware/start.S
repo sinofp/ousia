@@ -56,11 +56,15 @@ _start:
     TEST(jalr)
     TEST(jal)
     TEST(lb)
-    TEST(lbu)
+    # TEST(lbu)
+    TEST(lh)
+    # TEST(lhu)
+    TEST(lw)
     TEST(lui)
     TEST(ori)
     TEST(or)
     TEST(sb)
+    TEST(sh)
     TEST(slli)
     TEST(sll)
     TEST(slti)
@@ -72,18 +76,18 @@ _start:
     TEST(srli)
     TEST(srl)
     TEST(sub)
+    TEST(sw)
     TEST(xori)
     TEST(xor)
 
-    TEST(ram_test)
-    TEST(lw)
+    # TEST(ram_test)
 
     li a1, 0b00000000
     jal set_led
 
     # END
-    # la a1, str_crlf
-    # jal put_str
+    la a1, str_crlf
+    jal put_str
     # j _start
     j dead_loop
 

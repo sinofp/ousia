@@ -17,11 +17,12 @@ RVTEST_OBJS = rv32mi-p-breakpoint  rv32mi-p-csr  rv32mi-p-illegal  rv32mi-p-ma_a
 TEST_INSTS ?= $(RVTEST_OBJS)
 PYTEST_EXTRA_ARGS = -n auto
 
-FIRMWARE_RVTEST_OBJS = addi add andi and auipc beq bge bgeu \
-		       blt bltu bne jalr jal lb lbu sb \
-		       slli sll slti sltiu slt sltu srai sra \
-		       srli srl sub xori xor ram_test \
-		       ori or lui lw # lh lhu sh fence_i
+FIRMWARE_RVTEST_OBJS = addi add andi and auipc beq bge \
+		       bgeu blt bltu bne jalr jal lb \
+		       lh lui lw ori or sb sh \
+		       slli sll slti sltiu slt sltu srai \
+		       sra srli srl sub sw xori xor \
+		       # lbu lhu ram_test fence_i
 
 # [test]
 test: meminit build

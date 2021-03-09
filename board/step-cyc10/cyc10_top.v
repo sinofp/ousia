@@ -12,7 +12,7 @@ module wb_ram (
 );
 
   wire [29:0] address = addr[31:2];
-  wire req = cyc & stb;
+  wire req = cyc & stb & ~ack;
   wire rden = req & ~we;
   wire wren = req & we;
   ram #(
@@ -55,14 +55,14 @@ module wb_ram (
       .clock(clk),
       .data(wdata[31:24]),
       .rden(rden & sel[3]),
-      .wren(wren % sel[3]),
+      .wren(wren & sel[3]),
       .q(rdata[31:24])
   );
 
   reg ack1;  // 拖一个周期
   always @(posedge clk) begin
     ack1 <= 1'b0;
-    if (req & ~ack & ~ack1) begin
+    if (req & ~ack1) begin
       ack1 <= 1'b1;
     end
   end
