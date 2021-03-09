@@ -13,23 +13,8 @@ jobs:
         run: |
           sudo apt update
           sudo apt-get install autoconf automake autotools-dev curl python3 libmpc-dev libmpfr-dev libgmp-dev gawk build-essential bison flex texinfo gperf libtool patchutils bc zlib1g-dev libexpat-dev
-      - name: Get command
-        id: get-command
-        run: |
-          git submodule update --init --depth 1 tool/riscv-tests
-          mkdir -p tool/riscv/share/riscv-tests/isa # needed for `make meminit`
-          make gcc riscv-tests meminit --dry-run | tee log
-          echo "::set-output name=command::$(/usr/bin/sha256sum log)" # hash of make output
-          rmdir tool/riscv/share/riscv-tests/isa
-        shell: bash
-      - uses: actions/cache@v2
-        id: cache-meminit
-        with:
-          path: meminit
-          key: ${{ runner.os }}-${{ steps.get-command.outputs.command }}
       - name: Prepare meminit
-        if: steps.cache-meminit.outputs.cache-hit != 'true'
-        run: make gcc riscv-tests meminit
+        run: make gcc riscv-tests get-meminit
       - uses: actions/upload-artifact@v2
         with:
           name: my-meminit

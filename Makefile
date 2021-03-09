@@ -2,7 +2,7 @@ RISCV = $(PWD)/tool/riscv
 TOOLCHAIN_PREFIX = $(RISCV)/bin/riscv32-unknown-elf-
 
 RVTEST_ISA_PATH = $(RISCV)/share/riscv-tests/isa
-RVTEST_OBJS = rv32mi-p-breakpoint  rv32mi-p-csr  rv32mi-p-illegal  rv32mi-p-ma_addr \
+TEST_INSTS ?= rv32mi-p-breakpoint  rv32mi-p-csr  rv32mi-p-illegal  rv32mi-p-ma_addr \
 	      rv32mi-p-ma_fetch  rv32mi-p-mcsr  rv32mi-p-sbreak  rv32mi-p-shamt \
 	      rv32ui-p-add  rv32ui-p-addi  rv32ui-p-and  rv32ui-p-andi \
 	      rv32ui-p-auipc  rv32ui-p-beq  rv32ui-p-bge  rv32ui-p-bgeu \
@@ -13,37 +13,42 @@ RVTEST_OBJS = rv32mi-p-breakpoint  rv32mi-p-csr  rv32mi-p-illegal  rv32mi-p-ma_a
 	      rv32ui-p-sll  rv32ui-p-slli  rv32ui-p-slt  rv32ui-p-slti \
 	      rv32ui-p-sltiu  rv32ui-p-sltu  rv32ui-p-sra  rv32ui-p-srai \
 	      rv32ui-p-srl  rv32ui-p-srli  rv32ui-p-sub  rv32ui-p-sw \
-	      rv32ui-p-xor  rv32ui-p-xori  # rv32mi-p-scall  rv32ui-p-fence_i
-TEST_INSTS ?= $(RVTEST_OBJS)
+	      rv32ui-p-xor  rv32ui-p-xori  rv32ui-p-fence_i # rv32mi-p-scall
 PYTEST_EXTRA_ARGS = -n auto
+RVTEST_VERILOG = $(addprefix meminit/, $(addsuffix .verilog, $(TEST_INSTS)))
 
-FIRMWARE_RVTEST_OBJS = addi add andi and auipc beq bge \
+# lbu lhu ram_test fence_i
+FIRMWARE_RVTEST_OBJS = $(addprefix firmware/, $(addsuffix .o, \
+		       addi add andi and auipc beq bge \
 		       bgeu blt bltu bne jalr jal lb \
 		       lh lui lw ori or sb sh \
 		       slli sll slti sltiu slt sltu srai \
 		       sra srli srl sub sw xori xor \
-		       # lbu lhu ram_test fence_i
+		       ))
 
 # [test]
-test: meminit build
+test: build $(RVTEST_VERILOG)
 	pytest tb/test.py $(PYTEST_EXTRA_ARGS)
 
-test-inst: meminit build
+test-inst: build $(RVTEST_VERILOG)
 	INSTS='$(TEST_INSTS)' pytest tb/test.py -k inst $(PYTEST_EXTRA_ARGS)
 
-test-misc: meminit build
+test-misc: build meminit/firmware.verilog
 	pytest tb/test.py -k 'not inst' $(PYTEST_EXTRA_ARGS)
 
-meminit: firmware/firmware $(RVTEST_ISA_PATH)
-	-mkdir meminit
-	for RVTEST in $(RVTEST_OBJS); do \
-		$(TOOLCHAIN_PREFIX)objcopy $(RVTEST_ISA_PATH)/$$RVTEST -O verilog meminit/$$RVTEST.verilog ; \
-		sed -i 's|@8|@0|g' meminit/$$RVTEST.verilog ; \
-		cp $(RVTEST_ISA_PATH)/$$RVTEST.dump meminit ; \
-		done
-	# 分开？
+meminit:
+	mkdir meminit
+
+meminit/rv32%.verilog: $(RVTEST_ISA_PATH)/rv32% meminit
+	$(TOOLCHAIN_PREFIX)objcopy $< -O verilog $@
+	sed -i 's|@8|@0|g' $@
+	cp $<.dump meminit
+
+meminit/firmware.verilog: firmware/firmware meminit
 	$(TOOLCHAIN_PREFIX)objcopy $< -O verilog meminit/firmware.verilog
 	$(TOOLCHAIN_PREFIX)objdump -D $< > meminit/firmware.dump
+
+get-meminit: $(RVTEST_VERILOG) meminit/firmware.verilog
 
 # [tools]
 verilator:
@@ -69,10 +74,10 @@ riscv-tests:
 		make install RISCV_PREFIX=$(TOOLCHAIN_PREFIX)
 
 # [firmware]
-firmware/firmware: firmware/start.o firmware/linker.ld $(addprefix firmware/,$(addsuffix .o,$(FIRMWARE_RVTEST_OBJS)))
+firmware/firmware: firmware/start.o firmware/linker.ld $(FIRMWARE_RVTEST_OBJS)
 	$(TOOLCHAIN_PREFIX)gcc -Os -ffreestanding -nostdlib -o $@ \
 		-Wl,-Bstatic,-T,firmware/linker.ld,-Map,firmware/firmware.map,--strip-debug \
-		firmware/start.o $(addprefix firmware/,$(addsuffix .o,$(FIRMWARE_RVTEST_OBJS))) -lgcc
+		firmware/start.o $(FIRMWARE_RVTEST_OBJS) -lgcc
 
 firmware/firmware.bin: firmware/firmware
 	$(TOOLCHAIN_PREFIX)objcopy $< -O binary $@
@@ -112,4 +117,4 @@ clean:
 	cocotb-clean
 	sbt clean
 
-.PHONY: verilator gcc riscv-tests cyc10 clean test-inst test-misc test
+.PHONY: verilator gcc riscv-tests cyc10 clean test-inst test-misc test get-meminit
