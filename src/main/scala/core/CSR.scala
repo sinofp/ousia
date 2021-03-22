@@ -6,6 +6,7 @@ import chisel3.util._
 import Util.HighLowHalf
 import Consts._
 import Instructions._
+import chisel3.util.experimental.BoringUtils
 
 class CSRIO(val mxLen: Int)(implicit c: Config) extends CoreBundle {
   val pc         = Input(UInt(xLen.W))
@@ -62,6 +63,10 @@ class CSR(implicit c: Config) extends CoreModule {
   val time    = RegInit(0.U(64.W))
   val timecmp = Reg(UInt(64.W))
   val instret = RegInit(0.U(64.W))
+
+  // Paging
+  val satp = RegInit(0.U.asTypeOf(new Satp32))
+  BoringUtils.addSource(satp, "satp")
 
   // misc
   when(io.inst_ret)(instret := instret + 1.U)
@@ -139,6 +144,7 @@ class CSR(implicit c: Config) extends CoreModule {
     CSRs.minstret  -> instret.lowHalf,
     CSRs.minstreth -> instret.highHalf,
     CSRs.sepc      -> sepc,
+    CSRs.satp      -> satp.asUInt,
   ).map { case (k, v) => BitPat(k.U) -> v }
   val cmd_w      = io.cmd === CSR_CMD_W
   val cmd_s_or_c = io.cmd === CSR_CMD_S || io.cmd === CSR_CMD_C
@@ -212,6 +218,7 @@ class CSR(implicit c: Config) extends CoreModule {
       .elsewhen(csr_addr === CSRs.minstret.U)(instret := instret.highHalf ## wdata)
       .elsewhen(csr_addr === CSRs.minstreth.U)(instret := wdata ## instret.lowHalf)
       .elsewhen(csr_addr === CSRs.sepc.U)(sepc := wdata)
+      .elsewhen(csr_addr === CSRs.satp.U)(satp := wdata.asTypeOf(new Satp32))
   }
 }
 
@@ -270,4 +277,10 @@ class Mie(val mxLen: Int) extends Bundle {
   val zero3 = Bool()
   val ssie  = Bool()
   val usie  = Bool()
+}
+
+class Satp32 extends Bundle {
+  val mode = UInt(1.W)
+  val asid = UInt(9.W)
+  val ppn  = UInt(22.W)
 }

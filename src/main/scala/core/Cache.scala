@@ -15,7 +15,7 @@ class Cache(implicit c: Config) extends CoreModule {
 }
 
 class CacheReq(implicit c: Config) extends CoreBundle {
-  val addr = UInt(xLen.W)
+  val addr = UInt(32.W) // todo 34
   val data = UInt(xLen.W)
   val we   = Bool()
   val sel  = UInt((xLen / 8).W)

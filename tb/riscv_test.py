@@ -33,7 +33,6 @@ async def riscv_test(dut):
     dut.reset <= 0
 
     cpu = dut.soc.cpu
-    dcache = cpu.dcache.cache
 
     cnt = 0
 

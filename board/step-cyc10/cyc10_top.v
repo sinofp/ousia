@@ -114,24 +114,6 @@ module cyc10_top (
       .rst_n(rst_n)
   );
 
-  wire [31:0] inst_addr;
-  wire [31:0] inst_wdata;
-  wire [ 3:0] inst_sel;
-  wire        inst_we;
-  wire        inst_cyc;
-  wire        inst_stb;
-  wire [31:0] inst_rdata;
-  wire        inst_ack;
-
-  wire [31:0] data_addr;
-  wire [31:0] data_wdata;
-  wire [ 3:0] data_sel;
-  wire        data_we;
-  wire        data_cyc;
-  wire        data_stb;
-  wire [31:0] data_rdata;
-  wire        data_ack;
-
   wire [31:0] ram_addr;
   wire [31:0] ram_wdata;
   wire [ 3:0] ram_sel;
