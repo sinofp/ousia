@@ -46,7 +46,7 @@ def test_inst(inst):
             toplevel="cocotb_top",
             module="riscv_test",
             sim_build="sim_build/" + inst,
-            # extra_args=["--trace", "--trace-structs"],
+            extra_args=["--trace", "--trace-structs"],
         )
 
 
@@ -58,4 +58,25 @@ def test_firmware():
             toplevel="cocotb_top",
             module="firmware_test",
             sim_build="sim_build/firmware",
+        )
+
+
+@contextmanager
+def prepare_module(name):
+    top_v = name + ".v"
+    system(f"awk '/module {name}/,/endmodule/' Naive.v > {top_v}")
+    try:
+        yield top_v
+    finally:
+        system(f"rm {top_v}")
+
+
+def test_sv32():
+    with prepare_module("MMUSimple") as top_v:
+        simulator.run(
+            verilog_sources=[top_v],
+            includes=includes,
+            toplevel="MMUSimple",
+            module="sv32_test",
+            sim_build="sim_build/sv32",
         )

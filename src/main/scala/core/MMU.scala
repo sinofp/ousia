@@ -18,13 +18,13 @@ class PTE extends Bundle {
   val v = Bool() // valid
 }
 
-class VASV32 extends Bundle {
+class VASv32 extends Bundle {
   val vpn1 = UInt(10.W)
   val vpn0 = UInt(10.W)
   val offset = UInt(12.W)
 }
 
-class PASV32 extends Bundle {
+class PASv32 extends Bundle {
   val ppn = UInt(22.W)
   val offset = UInt(12.W)
 }
@@ -39,8 +39,8 @@ class MMUSimple(implicit c: Config) extends CoreModule {
   val sIdle :: sWait :: sRead :: Nil = Enum(3)
   val state                          = RegInit(sIdle)
 
-  val va  = io.cpu.req.bits.addr.asTypeOf(new VASV32)
-  val pte = io.wb.rdata.asTypeOf(new PTE)
+  val va  = io.cpu.req.bits.addr.asTypeOf(new VASv32)
+  val pte = RegNext(io.wb.rdata.asTypeOf(new PTE)) // ack后下一个周期可用，RegEnable？
 
   val translate1 = (ppn: UInt, vpni: UInt) => Cat(ppn, vpni, 0.U(2.W))
 
@@ -65,10 +65,8 @@ class MMUSimple(implicit c: Config) extends CoreModule {
         addr := translate1(satp.ppn, va.vpn1)
         level := 1.U
         done := false.B
-
-        io.wb.cyc   := true.B
-        io.wb.stb   := true.B
       }.otherwise {
+      // {
         io.wb.cyc   := io.cpu.req.valid && !io.cpu.abort
         io.wb.stb   := io.cpu.req.valid && !io.cpu.abort
         io.wb.sel   := io.cpu.req.bits.sel
@@ -95,15 +93,17 @@ class MMUSimple(implicit c: Config) extends CoreModule {
         addr := translate1(pte.ppn, va.vpn0)
         state := sWait
 
-        io.wb.cyc   := true.B
-        io.wb.stb   := true.B
+        io.wb.cyc   := false.B
+        io.wb.stb   := false.B
       }.elsewhen(level === 0.U) {
         // A leaf PTE has been found
         addr := pte.ppn ## va.offset
         state := sWait
 
-        io.wb.cyc   := true.B
-        io.wb.stb   := true.B
+        io.wb.cyc   := false.B
+        io.wb.stb   := false.B
+
+        done := true.B
       }
     }
   }

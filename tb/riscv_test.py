@@ -42,11 +42,11 @@ async def riscv_test(dut):
             inst = "{:08x}".format(bin2dec(cpu.inst))
             pattern.append(inst)
             print(
-                "pc = {:4x} ({}) {}|t0={:x}".format(
+                "pc = {:4x} ({}) {}|a5={:b}".format(
                     bin2dec(cpu.pc),
                     inst,
                     asm.get(inst, "???"),
-                    bin2dec(cpu.rf.reg_5),
+                    bin2dec(cpu.rf.reg_15),
                 )
             )
         else:
