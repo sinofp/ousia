@@ -132,7 +132,7 @@ class Naive(implicit c: Config) extends CoreModule {
     ECALL      -> Seq(Y, FMT_IC, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_P),
     EBREAK     -> Seq(Y, FMT_IC, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_P),
     URET       -> unimpl(),
-    SRET       -> unimpl(),
+    SRET       -> Seq(Y, FMT_IC, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_P),
     MRET       -> Seq(Y, FMT_IC, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_P),
     DRET       -> unimpl(),
     SFENCE_VMA -> unimpl(),
@@ -282,7 +282,7 @@ class Naive(implicit c: Config) extends CoreModule {
   csr.io.inst       := inst
   csr.io.inst_ilgl  := !cs.legal
   csr.io.inst_ret   := commit
-  csr.io.mem_addr   := alu.io.out
+  csr.io.mem_addr   := mem_addr
   csr.io.mem_en     := cs.mem_en
   csr.io.mem_rw     := cs.mem_rw
   csr.io.mem_sz     := cs.mem_sz

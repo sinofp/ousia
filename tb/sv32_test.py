@@ -10,10 +10,14 @@ offset = "010101010101"
 va = int(vpn1 + vpn0 + offset, 2)
 
 pte1_ppn = "1111111111111111111111"
-pte1 = int(pte1_ppn + "0000000000", 2)
+pte1 = int(pte1_ppn + "0000000001", 2)  # v = 1
 
 pte2_ppn = "1000000000000000000000"
-pte2 = int(pte2_ppn + "0000000000", 2)
+pte2 = int(pte2_ppn + "0000000011", 2)  # v = 1, r = 1 -> leaf PTE
+
+
+def bin2dec(x):
+    return int(str(x.value), 2)
 
 
 @cocotb.test()
@@ -25,6 +29,7 @@ async def sv32_test(dut):
     await FallingEdge(dut.clock)
     dut.reset <= 0
 
+    dut.isMachine_0 <= 0
     dut.satp_0_mode <= 1
     dut.satp_0_ppn <= int(satp_ppn, 2)
 
@@ -44,6 +49,8 @@ async def sv32_test(dut):
 
     # 2
     await RisingEdge(dut.io_wb_cyc)
+    print("============addr==", "{:b}".format(bin2dec(dut.io_wb_addr)))
+    print("==========myaddr==", "{:b}".format(int(pte1_ppn[2:] + vpn0 + "00", 2)))
     assert dut.io_wb_addr == int(pte1_ppn[2:] + vpn0 + "00", 2)  # todo 34 addr
 
     await FallingEdge(dut.clock)

@@ -46,7 +46,7 @@ def test_inst(inst):
             toplevel="cocotb_top",
             module="riscv_test",
             sim_build="sim_build/" + inst,
-            extra_args=["--trace", "--trace-structs"],
+            # extra_args=["--trace", "--trace-structs"],
         )
 
 

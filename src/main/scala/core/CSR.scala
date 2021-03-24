@@ -39,6 +39,7 @@ class CSR(implicit c: Config) extends CoreModule {
   val isMachine    = PRV === PRV_M
   val isSupervisor = PRV === PRV_S
   val isUser       = PRV === PRV_U
+  BoringUtils.addSource(isMachine, "isMachine")
 
   // Machine Information Registers
   val mvendorid = 0.U(mxLen.W)       // 非商业

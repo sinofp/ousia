@@ -41,7 +41,6 @@ meminit:
 
 meminit/rv32%.verilog: $(RVTEST_ISA_PATH)/rv32% meminit
 	$(TOOLCHAIN_PREFIX)objcopy $< -O verilog $@
-	sed -i 's|@8|@0|g' $@
 	cp $<.dump meminit
 
 meminit/firmware.verilog: firmware/firmware meminit
@@ -71,6 +70,7 @@ riscv-tests:
 	cd tool/riscv-tests && \
 		./configure --prefix=$(RISCV) && \
 		sed -i 's|install: all|install: isa|' Makefile && \
+		sed -i 's|0x8000000|0x00000000|' env/p/link.ld && \
 		make install RISCV_PREFIX=$(TOOLCHAIN_PREFIX)
 
 # [firmware]

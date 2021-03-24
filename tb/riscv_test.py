@@ -37,16 +37,25 @@ async def riscv_test(dut):
     cnt = 0
 
     while True:
-        if cpu.commit == 1:
+        # if cpu.commit == 1:
+        if True:
             cnt = 0
             inst = "{:08x}".format(bin2dec(cpu.inst))
             pattern.append(inst)
             print(
-                "pc = {:4x} ({}) {}|a5={:b}".format(
+                "pc = {:4x} ({}) {}|iaddr={:x}|vpn1={:b}|vpn0={:b}|addr34={:b}|satp.ppn={:b}|pte.ppn={:b}|s={}|i={}|pf={}".format(
                     bin2dec(cpu.pc),
                     inst,
                     asm.get(inst, "???"),
-                    bin2dec(cpu.rf.reg_15),
+                    bin2dec(cpu.icache.io_cpu_req_bits_addr),
+                    bin2dec(cpu.icache.addr),
+                    bin2dec(cpu.icache.va_vpn1),
+                    bin2dec(cpu.icache.va_vpn0),
+                    bin2dec(cpu.icache.satp_0_ppn),
+                    bin2dec(cpu.icache.pte_ppn),
+                    bin2dec(cpu.icache.state),
+                    bin2dec(cpu.icache.level),
+                    bin2dec(cpu.icache.page_fault),
                 )
             )
         else:
