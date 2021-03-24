@@ -35,7 +35,11 @@ class CSR(implicit c: Config) extends CoreModule {
   val sxLen = xLen
   val io    = IO(new CSRIO(mxLen))
 
-  val PRV       = RegInit(PRV_M)
+  val PRV          = RegInit(PRV_M)
+  val isMachine    = PRV === PRV_M
+  val isSupervisor = PRV === PRV_S
+  val isUser       = PRV === PRV_U
+
   // Machine Information Registers
   val mvendorid = 0.U(mxLen.W)       // 非商业
   val marchid   = 0.U(mxLen.W)       // 未实现
@@ -43,11 +47,11 @@ class CSR(implicit c: Config) extends CoreModule {
   val mhartid   = 0.U(mxLen.W)
   // Machine Trap Setup
   val mstatus   = RegInit(0.U.asTypeOf(new MStatus))
-  val misa      = "b01".U ## 0.U((mxLen - 28).W) ## "I".map(_ - 'A').map(1 << _).reduce(_ | _).U(26.W)
-  // medeleg
-  // mideleg
+  val misa      = 1.U(2.W) ## 0.U((mxLen - 28).W) ## "I".map(_ - 'A').map(1 << _).reduce(_ | _).U(26.W)
+  val medeleg   = Reg(UInt(mxLen.W)) // todo
+  val mideleg   = Reg(UInt(mxLen.W)) // todo
   val mie       = Reg(new Mie(mxLen))
-  val mtvec     = Reg(UInt(mxLen.W)) // 让操作系统设吧
+  val mtvec     = Reg(UInt(mxLen.W))
   // mcounteren
   // Machine Trap Handling
   val mscratch  = Reg(UInt(mxLen.W))
@@ -57,6 +61,8 @@ class CSR(implicit c: Config) extends CoreModule {
   val mip       = RegInit(0.U.asTypeOf(new Mip(mxLen)))
   // Supervisor Trap Handling
   val sepc      = Reg(UInt(sxLen.W))
+  val scause    = Reg(UInt(sxLen.W)) // todo
+  val stval     = Reg(UInt(sxLen.W)) // todo
 
   // User Counter/Timers
   val cycle   = RegInit(0.U(64.W))
@@ -151,6 +157,32 @@ class CSR(implicit c: Config) extends CoreModule {
   val ren        = cmd_s_or_c || cmd_w && !io.rdIsX0 // 不过有必要么？读取唯一的副作用就是写寄存器堆，rd == x0，本来也没法写啊？
   io.out := Mux(ren, Lookup(csr_addr, 0.U, csrFile), 0.U)
 
+  // trap register content
+  val cause_int  = MuxCase(
+    1.U,
+    Seq(m_software_int -> 3.U, s_timer_int -> 5.U, m_timer_int -> 7.U, s_external_int -> 9.U, m_external_int -> 11.U),
+  )
+  val cause_xcpt = MuxCase(
+    0.U,
+    Seq(
+      illegalInstruction -> Causes.illegal_instruction.U,
+      isEcall            -> (Causes.user_ecall.U + PRV),
+      isEbreak           -> Causes.breakpoint.U,
+      misalignedFetch    -> Causes.misaligned_fetch.U,
+      misalignedStore    -> Causes.misaligned_store.U,
+      misalignedLoad     -> Causes.misaligned_load.U,
+    ),
+  )
+  val tval       = MuxCase(
+    0.U,
+    Seq(
+      io.inst_ilgl    -> io.inst,
+      misalignedFetch -> io.jbr_target,
+      misalignedStore -> io.mem_addr,
+      misalignedLoad  -> io.mem_addr,
+    ),
+  )
+
   // write
   val wen   = cmd_w || cmd_s_or_c && !io.rs1IsX0
   val wdata =
@@ -158,49 +190,23 @@ class CSR(implicit c: Config) extends CoreModule {
 
   when(io.xcpt) {
     mepc         := io.pc
-    mcause       := Mux(
-      interrupt,
-      (1 << mxLen).asUInt | MuxCase(
-        1.U,
-        Seq(
-          m_software_int -> 3.U,
-          s_timer_int    -> 5.U,
-          m_timer_int    -> 7.U,
-          s_external_int -> 9.U,
-          m_external_int -> 11.U,
-        ),
-      ),
-      MuxCase(
-        0.U, {
-          import Causes._
-          Seq(
-            illegalInstruction -> illegal_instruction.U,
-            isEcall            -> machine_ecall.U, // todo 其他特权级
-            isEbreak           -> breakpoint.U,
-            misalignedFetch    -> misaligned_fetch.U,
-            misalignedStore    -> misaligned_store.U,
-            misalignedLoad     -> misaligned_load.U,
-          )
-        },
-      ),
-    )
-    mtval        := MuxCase(
-      0.U,
-      Seq(
-        io.inst_ilgl    -> io.inst,
-        misalignedFetch -> io.jbr_target,
-        misalignedStore -> io.mem_addr,
-        misalignedLoad  -> io.mem_addr,
-      ),
-    )
+    mcause       := Mux(interrupt, (1 << mxLen).asUInt | cause_int, cause_xcpt)
+    mtval        := tval
     mstatus.mie  := false.B
     mstatus.mpie := mstatus.mie
     mstatus.mpp  := PRV
     PRV          := PRV_M
   }.elsewhen(isMRet) {
-    // todo sret
     mstatus.mie := mstatus.mpie
     PRV         := mstatus.mpp
+    // spec说xPIE is set to 1，但设成1以后rv32ui-p-illegal会在mret卡住
+    // mstatus.mpie := 1.U
+    mstatus.mpp := PRV_U
+  }.elsewhen(isSRet) {
+    mstatus.sie := mstatus.spie
+    PRV         := mstatus.spp
+    // mstatus.spie := 1.U
+    mstatus.spp := PRV_U
   }.elsewhen(wen) {
     // 抽象出个方法？
     when(csr_addr === CSRs.mscratch.U)(mscratch := wdata)

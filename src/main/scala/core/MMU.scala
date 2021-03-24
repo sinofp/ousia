@@ -8,24 +8,24 @@ import chisel3.util.experimental.BoringUtils
 class PTE extends Bundle {
   val ppn = UInt(22.W)
   val rsw = UInt(2.W) // ignored by hardware
-  val d = Bool() // dirty
-  val a = Bool() // accessed
-  val g = Bool() // valid for all virtual address space, hardware accelerate
-  val u = Bool() // user page
-  val x = Bool()
-  val w = Bool()
-  val r = Bool() // rwx = 000, pointer to next table
-  val v = Bool() // valid
+  val d   = Bool()    // dirty
+  val a   = Bool()    // accessed
+  val g   = Bool()    // valid for all virtual address space, hardware accelerate
+  val u   = Bool()    // user page
+  val x   = Bool()
+  val w   = Bool()
+  val r   = Bool()    // rwx = 000, pointer to next table
+  val v   = Bool()    // valid
 }
 
 class VASv32 extends Bundle {
-  val vpn1 = UInt(10.W)
-  val vpn0 = UInt(10.W)
+  val vpn1   = UInt(10.W)
+  val vpn0   = UInt(10.W)
   val offset = UInt(12.W)
 }
 
 class PASv32 extends Bundle {
-  val ppn = UInt(22.W)
+  val ppn    = UInt(22.W)
   val offset = UInt(12.W)
 }
 
@@ -44,9 +44,9 @@ class MMUSimple(implicit c: Config) extends CoreModule {
 
   val translate1 = (ppn: UInt, vpni: UInt) => Cat(ppn, vpni, 0.U(2.W))
 
-  val addr = Reg(UInt(34.W))
+  val addr  = Reg(UInt(34.W))
   val level = Reg(UInt(1.W)) // todo Generalize
-  val done = Reg(Bool()) // 能不能直接用level？按spec是不允许，但真的会碰到level应该是负数的情况么？
+  val done  = Reg(Bool())    // 能不能直接用level？按spec是不允许，但真的会碰到level应该是负数的情况么？
 
   io.wb.cyc   := false.B
   io.wb.stb   := false.B
@@ -62,11 +62,11 @@ class MMUSimple(implicit c: Config) extends CoreModule {
     is(sIdle) {
       when(satp.mode.asBool && io.cpu.req.valid) {
         state := sWait
-        addr := translate1(satp.ppn, va.vpn1)
+        addr  := translate1(satp.ppn, va.vpn1)
         level := 1.U
-        done := false.B
+        done  := false.B
       }.otherwise {
-      // {
+        // {
         io.wb.cyc   := io.cpu.req.valid && !io.cpu.abort
         io.wb.stb   := io.cpu.req.valid && !io.cpu.abort
         io.wb.sel   := io.cpu.req.bits.sel
@@ -74,34 +74,34 @@ class MMUSimple(implicit c: Config) extends CoreModule {
         io.wb.wdata := io.cpu.req.bits.data
         io.wb.we    := io.cpu.req.bits.we
 
-        io.cpu.resp.valid     := io.wb.ack || io.cpu.abort
+        io.cpu.resp.valid := io.wb.ack || io.cpu.abort
       }
     }
     is(sWait) {
-      io.wb.cyc   := true.B
-      io.wb.stb   := true.B
+      io.wb.cyc := true.B
+      io.wb.stb := true.B
       when(io.wb.ack) {
         state := sRead
       }
     }
     is(sRead) {
       when(done) {
-        io.cpu.resp.valid     := true.B
+        io.cpu.resp.valid := true.B
       }.elsewhen(level === 1.U) {
         // PTE is a pointer to the next level of the page table
         level := 0.U
-        addr := translate1(pte.ppn, va.vpn0)
+        addr  := translate1(pte.ppn, va.vpn0)
         state := sWait
 
-        io.wb.cyc   := false.B
-        io.wb.stb   := false.B
+        io.wb.cyc := false.B
+        io.wb.stb := false.B
       }.elsewhen(level === 0.U) {
         // A leaf PTE has been found
-        addr := pte.ppn ## va.offset
+        addr  := pte.ppn ## va.offset
         state := sWait
 
-        io.wb.cyc   := false.B
-        io.wb.stb   := false.B
+        io.wb.cyc := false.B
+        io.wb.stb := false.B
 
         done := true.B
       }
