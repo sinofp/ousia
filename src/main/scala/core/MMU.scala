@@ -3,7 +3,7 @@ package core
 import chipsalliance.rocketchip.config.Config
 import chisel3._
 import chisel3.util._
-import chisel3.util.experimental.BoringUtils
+import Consts._
 
 class PTE extends Bundle {
   val ppn1 = UInt(12.W)
@@ -32,16 +32,38 @@ class PASv32 extends Bundle {
   val offset = UInt(12.W)
 }
 
-class MMUSimple(implicit c: Config) extends CoreModule {
-  val io = IO(new CacheModuleIO)
+class MMUReq(implicit c: Config) extends CacheReq {
+  val satp = new Satp32
+  val PRV  = UInt(2.W)
+}
 
-  val satp = Wire(new Satp32)
-  satp := 42.U.asTypeOf(new Satp32)
-  BoringUtils.addSink(satp, "satp") // todo input
+class MMUResp(implicit c: Config) extends CacheResp {
+  val page_fault = Bool()
+}
+
+class MMUIO(implicit c: Config) extends CoreBundle {
+  val abort = Input(Bool())
+  val req   = Flipped(Valid(new MMUReq))
+  val resp  = Valid(new MMUResp)
+}
+
+class MMUModuleIO(implicit c: Config) extends CoreBundle {
+  val cpu = new MMUIO
+  val wb  = new WishBoneIO
+}
+
+class MMUSimple(implicit c: Config) extends CoreModule {
+  val io = IO(new MMUModuleIO)
+
+  val satp = io.cpu.req.bits.satp
+//  val satp = Wire(new Satp32)
+//  satp := 42.U.asTypeOf(new Satp32)
+//  BoringUtils.addSink(satp, "satp") // todo input
 
   val isMachine = Wire(Bool())
-  isMachine := true.B
-  BoringUtils.addSink(isMachine, "isMachine") // todo input
+  isMachine := io.cpu.req.bits.PRV === PRV_M
+//  isMachine := true.B
+//  BoringUtils.addSink(isMachine, "isMachine") // todo input
 
   val trans_on = satp.mode.asBool && !isMachine
 
@@ -69,8 +91,12 @@ class MMUSimple(implicit c: Config) extends CoreModule {
   io.cpu.resp.valid     := false.B
   io.cpu.resp.bits.data := io.wb.rdata
 
-  val page_fault = WireInit(false.B)
-  dontTouch(page_fault) // todo stop when true
+  io.cpu.resp.bits.page_fault := false.B
+  def page_fault(): Unit = {
+    io.cpu.resp.valid           := true.B
+    io.cpu.resp.bits.page_fault := true.B
+    state                       := sIdle
+  }
 
   switch(state) {
     is(sIdle) {
@@ -80,14 +106,14 @@ class MMUSimple(implicit c: Config) extends CoreModule {
         level := 1.U
         done  := false.B
       }.otherwise {
-        io.wb.cyc   := io.cpu.req.valid && !io.cpu.abort
-        io.wb.stb   := io.cpu.req.valid && !io.cpu.abort
+        io.wb.cyc   := io.cpu.req.valid     //&& !io.cpu.abort
+        io.wb.stb   := io.cpu.req.valid     //&& !io.cpu.abort
         io.wb.sel   := io.cpu.req.bits.sel
         io.wb.addr  := io.cpu.req.bits.addr // 不用reg addr
         io.wb.wdata := io.cpu.req.bits.data
         io.wb.we    := io.cpu.req.bits.we
 
-        io.cpu.resp.valid := io.wb.ack || io.cpu.abort
+        io.cpu.resp.valid := io.wb.ack //|| io.cpu.abort
       }
     }
     is(sWait) {
@@ -103,7 +129,7 @@ class MMUSimple(implicit c: Config) extends CoreModule {
       when(done) {
         io.cpu.resp.valid := true.B
       }.elsewhen(!pte.v || !pte.r && pte.w) {
-        page_fault := true.B // step 3
+        page_fault() // step 3
       }.otherwise {
         // PTE is valid
         when(pte.r || pte.x) {
@@ -111,12 +137,10 @@ class MMUSimple(implicit c: Config) extends CoreModule {
           //todo pte.twxu
 
           // step 6
-          when(level === 1.U && pte.ppn0.orR)(page_fault := true.B)
+          when(level === 1.U && pte.ppn0.orR)(page_fault())
 
           // step 7
-          when(!pte.a || io.cpu.req.bits.we && pte.d) {
-            page_fault := true.B // todo write pte.d = 1
-          }
+          when(!pte.a || io.cpu.req.bits.we && pte.d)(page_fault())
 
           // step 8, successful
           when(level === 1.U) {
@@ -130,7 +154,7 @@ class MMUSimple(implicit c: Config) extends CoreModule {
         }.otherwise {
           // PTE is a pointer to the next level of the page table
           // step 4: If i < 0...
-          when(level === 0.U)(page_fault := true.B)
+          when(level === 0.U)(page_fault())
 
           level := 0.U // level -= 1
           addr  := translate1(pte.ppn, va.vpn0)

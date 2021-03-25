@@ -35,8 +35,10 @@ class Naive(implicit c: Config) extends CoreModule {
   val iack2     = RegNext(iack, false.B)
   val xcpt      = WireInit(Bool(), false.B)
   val xret      = WireInit(Bool(), false.B)
-  val mtvec     = Wire(UInt(xLen.W))
+  val xtvec     = Wire(UInt(xLen.W))
   val mepc      = Wire(UInt(xLen.W))
+  val satp      = Wire(new Satp32)
+  val PRV       = Wire(UInt(2.W))
 
   // 这个不应该叫commit，因为发生异常的指令不会commit。这个变量表示该执行下一条指令的意思
   val commit = xcpt || !mem_en && iack2 || mem_en && dack
@@ -50,15 +52,17 @@ class Naive(implicit c: Config) extends CoreModule {
   val pcp4        = pc + 4.U
   val jbr         = br_taken || jal || jalr
   val jbr_target  = MuxCase(br_target, Seq(jal -> (pc + imm), jalr -> (Rrs1 + (imm(31, 1) ## 0.U))))
-  pc                   := Mux(commit, MuxCase(pcp4, Seq(xcpt -> mtvec, xret -> mepc, jbr -> jbr_target)), pc)
+  pc                   := Mux(commit, MuxCase(pcp4, Seq(xcpt -> xtvec, xret -> mepc, jbr -> jbr_target)), pc)
   icache.io.cpu.abort  := false.B
   icache_req.bits.addr := pc
   icache_req.valid     := iread
   icache_req.bits.sel  := "b1111".U
   icache_req.bits.we   := false.B
   icache_req.bits.data := DontCare
+  icache_req.bits.satp := satp
+  icache_req.bits.PRV  := PRV
   val inst = RegInit(UInt(32.W), "h13".U)
-  inst         := MuxCase("h00000013".U, Seq((mem_en && !dack && !xcpt) -> inst, iack -> icache_resp.bits.data))
+  inst         := MuxCase("h00000013".U, Seq((mem_en && !dack && !xcpt) -> inst, (iack && !xcpt) -> icache_resp.bits.data))
   icache.io.wb <> io.iwb
 
   // ID
@@ -227,6 +231,8 @@ class Naive(implicit c: Config) extends CoreModule {
   // 有时会出现lw xx, ?(xx)这样同一个寄存器即生成地址又接受数据的情况。因为现在等待访存结束是重复执行那条访存指令，所以同一条指令，地址会变
   val mem_addr_reg = RegEnable(_mem_addr, iack2)
   val mem_addr     = Mux(iack2, _mem_addr, mem_addr_reg)
+  dcache_req.bits.satp := satp
+  dcache_req.bits.PRV  := PRV
   dcache_req.bits.addr := mem_addr(31, 2) ## 0.U(2.W)
   dcache_req.valid     := cs.mem_en
   // 这玩意写进decode里？还是整个LSU出来
@@ -278,24 +284,28 @@ class Naive(implicit c: Config) extends CoreModule {
 
   // WB
   val csr = Module(new CSR)
-  csr.io.pc         := pc
-  csr.io.inst       := inst
-  csr.io.inst_ilgl  := !cs.legal
-  csr.io.inst_ret   := commit
-  csr.io.mem_addr   := mem_addr
-  csr.io.mem_en     := cs.mem_en
-  csr.io.mem_rw     := cs.mem_rw
-  csr.io.mem_sz     := cs.mem_sz
-  csr.io.cmd        := cs.csr_cmd
-  csr.io.rdIsX0     := !rd.orR
-  csr.io.rs1IsX0    := !rs1.orR // 这个不只代表rs1不是x0，也意味着CSR??I的uimm不是0
-  csr.io.in         := alu.io.out
-  csr.io.jbr        := jbr
-  csr.io.jbr_target := jbr_target
-  xcpt              := csr.io.xcpt
-  mtvec             := csr.io.mtvec
-  xret              := csr.io.xret
-  mepc              := csr.io.xepc
+  csr.io.pc              := pc
+  csr.io.inst            := inst
+  csr.io.inst_ilgl       := !cs.legal
+  csr.io.inst_ret        := commit
+  csr.io.inst_page_fault := icache_resp.valid && icache_resp.bits.page_fault // valid?
+  csr.io.data_page_fault := dcache_resp.valid && dcache_resp.bits.page_fault // valid?
+  csr.io.mem_addr        := mem_addr
+  csr.io.mem_en          := cs.mem_en
+  csr.io.mem_rw          := cs.mem_rw
+  csr.io.mem_sz          := cs.mem_sz
+  csr.io.cmd             := cs.csr_cmd
+  csr.io.rdIsX0          := !rd.orR
+  csr.io.rs1IsX0         := !rs1.orR                                         // 这个不只代表rs1不是x0，也意味着CSR??I的uimm不是0
+  csr.io.in              := alu.io.out
+  csr.io.jbr             := jbr
+  csr.io.jbr_target      := jbr_target
+  xcpt                   := csr.io.xcpt
+  xtvec                  := csr.io.xtvec
+  xret                   := csr.io.xret
+  mepc                   := csr.io.xepc
+  satp                   := csr.io.satp
+  PRV                    := csr.io.PRV
 
   rf.io.wen   := (cs.fmt =/= FMT_S && cs.fmt =/= FMT_SB && cs.fmt =/= FMT_WIP) && !xcpt
   rf.io.waddr := rd
