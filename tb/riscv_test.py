@@ -38,24 +38,24 @@ async def riscv_test(dut):
     cnt = 0
 
     while True:
-        if cpu.commit == 1:
+        if cpu.next_inst == 1:
+            # if True:
             cnt = 0
             inst = "{:08x}".format(b2d(cpu.inst))
             pattern.append(inst)
             print(
-                "pc = {:8x} ({}) {}|va={:b}|addr34={:b}|satp.ppn={:b}|pte.ppn={:b}|\n\ts={}|i={}|pf={}|deleg2S={}|trans_on={}|intm={}|ints={}|e={}|iack={}".format(
+                "pc = {:8x} ({}) {}|va={:x}|pa={:x}|im.s={}|i={}|pf={}|deleg={}|im={}|is={}|xcpt={}|resp.valid={}|".format(
                     b2d(cpu.pc),
                     inst,
                     asm.get(inst, "???"),
                     b2d(cpu.icache.io_cpu_req_bits_addr),
                     b2d(cpu.icache.addr),
-                    b2d(cpu.icache.io_cpu_req_bits_satp_ppn),
-                    b2d(cpu.icache.pte_ppn),
+                    # b2d(cpu.icache.io_cpu_req_bits_satp_ppn),
+                    # b2d(cpu.icache.pte_ppn),
                     b2d(cpu.icache.state),
                     b2d(cpu.icache.level),
                     b2d(cpu.icache.io_cpu_resp_bits_page_fault),
                     b2d(cpu.csr.deleg2S),
-                    b2d(cpu.icache.trans_on),
                     b2d(cpu.csr.interrupt_m),
                     b2d(cpu.csr.interrupt_s),
                     b2d(cpu.csr.exception),

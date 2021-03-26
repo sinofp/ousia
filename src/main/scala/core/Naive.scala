@@ -30,20 +30,16 @@ class Naive(implicit c: Config) extends CoreModule {
   val mem_en    = WireInit(Bool(), false.B)
   val mem_load  = WireInit(Bool(), false.B)
   val alu       = Module(new ALU)
-  val iack      = icache.io.cpu.resp.valid
-  val dack      = dcache.io.cpu.resp.valid
-  val iack2     = RegNext(iack, false.B)
   val xcpt      = WireInit(Bool(), false.B)
   val xret      = WireInit(Bool(), false.B)
   val xtvec     = Wire(UInt(xLen.W))
-  val mepc      = Wire(UInt(xLen.W))
+  val xepc      = Wire(UInt(xLen.W))
   val satp      = Wire(new Satp32)
   val PRV       = Wire(UInt(2.W))
 
-  // 这个不应该叫commit，因为发生异常的指令不会commit。这个变量表示该执行下一条指令的意思
-  val commit = xcpt || !mem_en && iack2 || mem_en && dack
-  val iread  = RegInit(Bool(), true.B)
-  iread := Mux(commit || iack, !iread, iread)
+  val exec_start = Reg(Bool()) // enable update mem addr
+  val next_inst  = Wire(Bool())
+  dontTouch(next_inst) // used for trace
 
   // IF
   val icache_req  = icache.io.cpu.req
@@ -52,18 +48,15 @@ class Naive(implicit c: Config) extends CoreModule {
   val pcp4        = pc + 4.U
   val jbr         = br_taken || jal || jalr
   val jbr_target  = MuxCase(br_target, Seq(jal -> (pc + imm), jalr -> (Rrs1 + (imm(31, 1) ## 0.U))))
-  pc                   := Mux(commit, MuxCase(pcp4, Seq(xcpt -> xtvec, xret -> mepc, jbr -> jbr_target)), pc)
+  val inst        = RegInit(UInt(32.W), NOP_INST)
   icache.io.cpu.abort  := false.B
   icache_req.bits.addr := pc
-  icache_req.valid     := iread
   icache_req.bits.sel  := "b1111".U
   icache_req.bits.we   := false.B
   icache_req.bits.data := DontCare
   icache_req.bits.satp := satp
   icache_req.bits.PRV  := PRV
-  val inst = RegInit(UInt(32.W), "h13".U)
-  inst         := MuxCase("h00000013".U, Seq((mem_en && !dack && !xcpt) -> inst, (iack && !xcpt) -> icache_resp.bits.data))
-  icache.io.wb <> io.iwb
+  icache.io.wb         <> io.iwb
 
   // ID
   class FirstCtrlSigs extends Bundle {
@@ -79,7 +72,7 @@ class Naive(implicit c: Config) extends CoreModule {
     val csr_cmd = UInt(SZ_CSR_CMD.W)
   }
 
-  implicit def uint2BitPat(x: UInt)          = BitPat(x)
+  implicit def uint2BitPat(x: UInt): BitPat  = BitPat(x)
   def unimpl(legal: BitPat = Y): Seq[BitPat] = Seq(legal, FMT_WIP, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_N)
 
   val table: Seq[(BitPat, Seq[BitPat])] = Seq(
@@ -225,12 +218,10 @@ class Naive(implicit c: Config) extends CoreModule {
   // MEM
   io.dwb              <> dcache.io.wb
   dcache.io.cpu.abort := xcpt
-  val dcache_req   = dcache.io.cpu.req
-  val dcache_resp  = dcache.io.cpu.resp
-  val _mem_addr    = alu.io.out
+  val dcache_req  = dcache.io.cpu.req
+  val dcache_resp = dcache.io.cpu.resp
   // 有时会出现lw xx, ?(xx)这样同一个寄存器即生成地址又接受数据的情况。因为现在等待访存结束是重复执行那条访存指令，所以同一条指令，地址会变
-  val mem_addr_reg = RegEnable(_mem_addr, iack2)
-  val mem_addr     = Mux(iack2, _mem_addr, mem_addr_reg)
+  val mem_addr    = Mux(exec_start, alu.io.out, RegEnable(alu.io.out, exec_start))
   dcache_req.bits.satp := satp
   dcache_req.bits.PRV  := PRV
   dcache_req.bits.addr := mem_addr(31, 2) ## 0.U(2.W)
@@ -287,7 +278,7 @@ class Naive(implicit c: Config) extends CoreModule {
   csr.io.pc              := pc
   csr.io.inst            := inst
   csr.io.inst_ilgl       := !cs.legal
-  csr.io.inst_ret        := commit
+  csr.io.inst_ret        := next_inst
   csr.io.inst_page_fault := icache_resp.valid && icache_resp.bits.page_fault // valid?
   csr.io.data_page_fault := dcache_resp.valid && dcache_resp.bits.page_fault // valid?
   csr.io.mem_addr        := mem_addr
@@ -303,7 +294,7 @@ class Naive(implicit c: Config) extends CoreModule {
   xcpt                   := csr.io.xcpt
   xtvec                  := csr.io.xtvec
   xret                   := csr.io.xret
-  mepc                   := csr.io.xepc
+  xepc                   := csr.io.xepc
   satp                   := csr.io.satp
   PRV                    := csr.io.PRV
 
@@ -314,6 +305,49 @@ class Naive(implicit c: Config) extends CoreModule {
     alu.io.out,
     Seq(RF_WDATA_MEM -> mem_out, RF_WDATA_PC4 -> pcp4, RF_WDATA_CSR -> csr.io.out),
   )
+
+  // state machine (temp)
+  val sFetch :: sExec :: Nil = Enum(2)
+  val state                  = RegInit(sFetch)
+
+  def go_fetch(next_pc: UInt): Unit = {
+    // Who’s a good boy?
+    pc        := next_pc
+    inst      := NOP_INST
+    state     := sFetch
+    next_inst := true.B
+  }
+
+  icache_req.valid := false.B
+  next_inst        := false.B
+  exec_start       := false.B
+  switch(state) {
+    is(sFetch) {
+      icache_req.valid := true.B
+//      inst             := NOP_INST
+      when(xcpt) {
+        pc        := xtvec
+        next_inst := true.B
+      }.elsewhen(icache_resp.valid) {
+        // valid且没有exception（大概率是inst page fault，也有可能是没对齐）
+        inst       := icache_resp.bits.data
+        state      := sExec
+        exec_start := true.B
+      }
+    }
+    is(sExec) {
+      when(xcpt) {
+        go_fetch(xtvec)
+      }.elsewhen(xret) {
+        go_fetch(xepc)
+      }.elsewhen(jbr) {
+        go_fetch(jbr_target)
+      }.elsewhen(!mem_en || dcache_resp.valid) {
+        // 不用memory，或者用，但是已经用完了 -> commit
+        go_fetch(pcp4)
+      }
+    }
+  }
 }
 
 class RFIO(implicit c: Config) extends CoreBundle {

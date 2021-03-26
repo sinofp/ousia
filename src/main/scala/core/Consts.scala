@@ -4,6 +4,8 @@ import chisel3._
 import chisel3.util.BitPat
 
 object Consts {
+  val NOP_INST = 0x13.U(32.W)
+
   val SZ_SEL_ALU1 = 2
   val A1_ZERO     = 0.U
   val A1_RS1      = 1.U
