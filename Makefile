@@ -13,7 +13,17 @@ TEST_INSTS ?= rv32mi-p-breakpoint  rv32mi-p-csr  rv32mi-p-illegal  rv32mi-p-ma_a
 	      rv32ui-p-sll  rv32ui-p-slli  rv32ui-p-slt  rv32ui-p-slti \
 	      rv32ui-p-sltiu  rv32ui-p-sltu  rv32ui-p-sra  rv32ui-p-srai \
 	      rv32ui-p-srl  rv32ui-p-srli  rv32ui-p-sub  rv32ui-p-sw \
-	      rv32ui-p-xor  rv32ui-p-xori  rv32ui-p-fence_i # rv32mi-p-scall
+	      rv32ui-p-xor  rv32ui-p-xori  rv32ui-p-fence_i # rv32mi-p-scall \
+	      rv32ui-v-add rv32ui-v-addi rv32ui-v-and rv32ui-v-andi \
+	      rv32ui-v-auipc rv32ui-v-beq rv32ui-v-bge rv32ui-v-bgeu \
+	      rv32ui-v-blt rv32ui-v-bltu rv32ui-v-bne rv32ui-v-fence_i \
+	      rv32ui-v-jal rv32ui-v-jalr rv32ui-v-lb rv32ui-v-lbu \
+	      rv32ui-v-lh rv32ui-v-lhu rv32ui-v-lui rv32ui-v-lw \
+	      rv32ui-v-or rv32ui-v-ori rv32ui-v-sb rv32ui-v-sh \
+	      rv32ui-v-simple rv32ui-v-sll rv32ui-v-slli rv32ui-v-slt \
+	      rv32ui-v-slti rv32ui-v-sltiu rv32ui-v-sltu rv32ui-v-sra \
+	      rv32ui-v-srai rv32ui-v-srl rv32ui-v-srli rv32ui-v-sub \
+	      rv32ui-v-sw rv32ui-v-xor rv32ui-v-xori
 PYTEST_EXTRA_ARGS = -n auto
 RVTEST_VERILOG = $(addprefix meminit/, $(addsuffix .verilog, $(TEST_INSTS)))
 
@@ -41,6 +51,7 @@ meminit:
 
 meminit/rv32%.verilog: $(RVTEST_ISA_PATH)/rv32% meminit
 	$(TOOLCHAIN_PREFIX)objcopy $< -O verilog $@
+	sed -i 's|@8|@0|g' $@
 	cp $<.dump meminit
 
 meminit/firmware.verilog: firmware/firmware meminit
@@ -70,7 +81,6 @@ riscv-tests:
 	cd tool/riscv-tests && \
 		./configure --prefix=$(RISCV) && \
 		sed -i 's|install: all|install: isa|' Makefile && \
-		sed -i 's|0x8000000|0x00000000|' env/p/link.ld && \
 		make install RISCV_PREFIX=$(TOOLCHAIN_PREFIX)
 
 # [firmware]

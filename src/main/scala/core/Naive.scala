@@ -12,12 +12,7 @@ class Naive(implicit c: Config) extends CoreModule {
   val io = IO(new Bundle {
     val iwb = new WishBoneIO
     val dwb = new WishBoneIO
-    val rf  = Output(new RFIO)
   })
-
-  io.rf.getElements.foreach(_ := 42.U)
-  if (rf2Top)
-    io.rf.elements.foreach(p => BoringUtils.addSink(p._2, s"${p._1}"))
 
   val icache    = Module(new MMUSimple)
   val dcache    = Module(new MMUSimple)
@@ -44,7 +39,7 @@ class Naive(implicit c: Config) extends CoreModule {
   // IF
   val icache_req  = icache.io.cpu.req
   val icache_resp = icache.io.cpu.resp
-  val pc          = RegInit(UInt(32.W), 0.U)
+  val pc          = RegInit(UInt(32.W), c(DRAM_BASE))
   val pcp4        = pc + 4.U
   val jbr         = br_taken || jal || jalr
   val jbr_target  = MuxCase(br_target, Seq(jal -> (pc + imm), jalr -> (Rrs1 + (imm(31, 1) ## 0.U))))
@@ -348,42 +343,6 @@ class Naive(implicit c: Config) extends CoreModule {
       }
     }
   }
-}
-
-class RFIO(implicit c: Config) extends CoreBundle {
-  val w    = if (rf2Top) xLen.W else 0.W
-  val zero = UInt(w)
-  val ra   = UInt(w)
-  val sp   = UInt(w)
-  val gp   = UInt(w)
-  val tp   = UInt(w)
-  val t0   = UInt(w)
-  val t1   = UInt(w)
-  val t2   = UInt(w)
-  val s0   = UInt(w)
-  val s1   = UInt(w)
-  val a0   = UInt(w)
-  val a1   = UInt(w)
-  val a2   = UInt(w)
-  val a3   = UInt(w)
-  val a4   = UInt(w)
-  val a5   = UInt(w)
-  val a6   = UInt(w)
-  val a7   = UInt(w)
-  val s2   = UInt(w)
-  val s3   = UInt(w)
-  val s4   = UInt(w)
-  val s5   = UInt(w)
-  val s6   = UInt(w)
-  val s7   = UInt(w)
-  val s8   = UInt(w)
-  val s9   = UInt(w)
-  val s10  = UInt(w)
-  val s11  = UInt(w)
-  val t3   = UInt(w)
-  val t4   = UInt(w)
-  val t5   = UInt(w)
-  val t6   = UInt(w)
 }
 
 class WishBoneIO(implicit c: Config) extends CoreBundle {

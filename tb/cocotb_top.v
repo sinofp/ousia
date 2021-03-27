@@ -10,7 +10,7 @@ module wb_ram (
     output reg        ack
 );
 
-  reg [7:0] mem[32767:0];  // 32KB
+  reg [7:0] mem[64*4*1024-1:0];  // 64*4KB
 
   integer i;
   always @(posedge clk) begin

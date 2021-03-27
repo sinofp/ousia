@@ -2,7 +2,6 @@ package core
 
 import chipsalliance.rocketchip.config.Config
 import chisel3._
-import chisel3.util.experimental.BoringUtils
 
 class RegFile(readPorts: Int)(implicit c: Config) extends CoreModule {
   require(readPorts >= 0)
@@ -28,10 +27,4 @@ class RegFile(readPorts: Int)(implicit c: Config) extends CoreModule {
     }.otherwise {
       rdata(i) := reg(raddr(i))
     }
-
-  if (rf2Top)
-    "zero ra sp gp tp t0 t1 t2 s0 s1 a0 a1 a2 a3 a4 a5 a6 a7 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 t3 t4 t5 t6"
-      .split(' ')
-      .zipWithIndex
-      .foreach { case (str, i) => BoringUtils.addSource(reg(i), str) }
 }

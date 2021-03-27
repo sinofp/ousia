@@ -56,19 +56,11 @@ class MMUSimple(implicit c: Config) extends CoreModule {
   val io = IO(new MMUModuleIO)
 
   val satp = io.cpu.req.bits.satp
-//  val satp = Wire(new Satp32)
-//  satp := 42.U.asTypeOf(new Satp32)
-//  BoringUtils.addSink(satp, "satp") // todo input
 
   val isMachine = Wire(Bool())
   isMachine := io.cpu.req.bits.PRV === PRV_M
-//  isMachine := true.B
-//  BoringUtils.addSink(isMachine, "isMachine") // todo input
 
   val trans_on = satp.mode.asBool && !isMachine
-
-  val sIdle :: sWait :: sRead :: Nil = Enum(3)
-  val state                          = RegInit(sIdle)
 
   val va      = io.cpu.req.bits.addr.asTypeOf(new VASv32)
   val pte     = RegNext(io.wb.rdata.asTypeOf(new PTE)) // ack后下一个周期可用，RegEnable？
@@ -92,12 +84,15 @@ class MMUSimple(implicit c: Config) extends CoreModule {
   io.cpu.resp.bits.data := io.wb.rdata
 
   io.cpu.resp.bits.page_fault := false.B
-  def page_fault(): Unit = {
+  def page_fault(reason: String): Unit = {
     io.cpu.resp.valid           := true.B
     io.cpu.resp.bits.page_fault := true.B
     state                       := sIdle
+    printf(p"=E page-fault: $reason\n")
   }
 
+  val sIdle :: sWait :: sRead :: Nil = Enum(3)
+  val state                          = RegInit(sIdle)
   switch(state) {
     is(sIdle) {
       when(trans_on && io.cpu.req.valid) {
@@ -120,16 +115,19 @@ class MMUSimple(implicit c: Config) extends CoreModule {
       io.wb.cyc := true.B
       io.wb.stb := true.B
       when(io.wb.ack) {
-        state := sRead
+        when(done) {
+          state             := sIdle
+          io.cpu.resp.valid := true.B
+        }.otherwise {
+          state := sRead
+        }
       }
     }
     is(sRead) {
       io.wb.cyc := false.B
       io.wb.stb := false.B
-      when(done) {
-        io.cpu.resp.valid := true.B
-      }.elsewhen(!pte.v || !pte.r && pte.w) {
-        page_fault() // step 3
+      when(!pte.v || !pte.r && pte.w) {
+        page_fault("PTE is not valid") // step 3
       }.otherwise {
         // PTE is valid
         when(pte.r || pte.x) {
@@ -137,10 +135,10 @@ class MMUSimple(implicit c: Config) extends CoreModule {
           //todo pte.twxu
 
           // step 6
-          when(level === 1.U && pte.ppn0.orR)(page_fault())
+          when(level === 1.U && pte.ppn0.orR)(page_fault("misaligned superpage"))
 
           // step 7
-          when(!pte.a || io.cpu.req.bits.we && pte.d)(page_fault())
+          when(!pte.a || io.cpu.req.bits.we && pte.d)(page_fault("a = 0 || store && d = 0"))
 
           // step 8, successful
           when(level === 1.U) {
@@ -151,14 +149,6 @@ class MMUSimple(implicit c: Config) extends CoreModule {
           state := sWait
 
           done := true.B
-        }.otherwise {
-          // PTE is a pointer to the next level of the page table
-          // step 4: If i < 0...
-          when(level === 0.U)(page_fault())
-
-          level := 0.U // level -= 1
-          addr  := translate1(pte.ppn, va.vpn0)
-          state := sWait
         }
       }
     }

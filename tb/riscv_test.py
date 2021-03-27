@@ -11,9 +11,17 @@ def b2d(x):
     return int(str(x.value), 2)
 
 
-pattern = deque(maxlen=3)
-pass_pattern = deque(["05d00893", "00000513", "00000073"])
-fail_pattern = deque(["00018063", "00119193", "0011e193"])
+# True -> v, False -> p
+env_v = "-v-" in environ["DUMPFILE"]
+
+pattern = deque(maxlen=2 if env_v else 3)
+pass_pattern = deque(
+    ["00100513", "00000073"] if env_v else ["05d00893", "00000513", "00000073"]
+)
+fail_pattern = deque(
+    ["00050063", "00156513"] if env_v else ["00018063", "00119193", "0011e193"]
+)
+
 
 asm = {}
 with open(environ["DUMPFILE"]) as f:
@@ -44,26 +52,26 @@ async def riscv_test(dut):
             inst = "{:08x}".format(b2d(cpu.inst))
             pattern.append(inst)
             print(
-                "pc = {:8x} ({}) {}|va={:x}|pa={:x}|im.s={}|i={}|pf={}|deleg={}|im={}|is={}|xcpt={}|resp.valid={}|".format(
+                "pc = {:8x} ({}) {}|va={:x}|pa={:x}|im.s={}|i={}|pf={}|xcpt={}|mcause={}|scause={}|deleg2S={}|trans={}|resp.valid={}|rdata={}".format(
                     b2d(cpu.pc),
                     inst,
                     asm.get(inst, "???"),
-                    b2d(cpu.icache.io_cpu_req_bits_addr),
-                    b2d(cpu.icache.addr),
-                    # b2d(cpu.icache.io_cpu_req_bits_satp_ppn),
-                    # b2d(cpu.icache.pte_ppn),
-                    b2d(cpu.icache.state),
-                    b2d(cpu.icache.level),
-                    b2d(cpu.icache.io_cpu_resp_bits_page_fault),
-                    b2d(cpu.csr.deleg2S),
-                    b2d(cpu.csr.interrupt_m),
-                    b2d(cpu.csr.interrupt_s),
+                    b2d(cpu.dcache.io_cpu_req_bits_addr),
+                    b2d(cpu.dcache.addr),
+                    # b2d(cpu.dcache.io_cpu_req_bits_satp_ppn),
+                    # b2d(cpu.dcache.pte_ppn),
+                    b2d(cpu.dcache.state),
+                    b2d(cpu.dcache.level),
+                    b2d(cpu.dcache.io_cpu_resp_bits_page_fault),
                     b2d(cpu.csr.exception),
-                    b2d(cpu.icache.io_cpu_resp_valid),
+                    b2d(cpu.csr.mcause),
+                    b2d(cpu.csr.scause),
+                    b2d(cpu.csr.deleg2S),
+                    b2d(cpu.dcache.trans_on),
+                    b2d(cpu.dcache.io_cpu_resp_valid),
+                    b2d(cpu.dcache.io_wb_rdata),
                 )
             )
-            # if '{:8x}'.format(b2d(cpu.pc)) == '7fc00144':
-            #     break
         else:
             cnt += 1
             assert cnt != 100, "Stucked!"
@@ -74,8 +82,9 @@ async def riscv_test(dut):
         )
         await FallingEdge(dut.clk)
 
-    a7 = cpu.rf.reg_17
-    assert a7 == 93, "a7 is not 93, a7 is {}".format(b2d(a7))
+    if not env_v:
+        a7 = cpu.rf.reg_17
+        assert a7 == 93, "a7 is not 93, a7 is {}".format(b2d(a7))
 
-    a0 = cpu.rf.reg_10
-    assert a0 == 0, "a0 is not 0, a0 is {}".format(b2d(a0))
+        a0 = cpu.rf.reg_10
+        assert a0 == 0, "a0 is not 0, a0 is {}".format(b2d(a0))
