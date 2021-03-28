@@ -69,16 +69,16 @@ class MMUSimple(implicit c: Config) extends CoreModule {
 
   val translate1 = (ppn: UInt, vpni: UInt) => Cat(ppn, vpni, 0.U(2.W))
 
-  val addr  = Reg(UInt(34.W))
-  val level = Reg(UInt(1.W)) // todo Generalize
-  val done  = Reg(Bool())
+  val addr       = Reg(UInt(34.W))
+  val level      = Reg(UInt(1.W)) // todo Generalize
+  val last_round = Reg(Bool())
 
   io.wb.cyc   := false.B
   io.wb.stb   := false.B
-  io.wb.sel   := "b1111".U
-  io.wb.we    := false.B
-  io.wb.wdata := 42.U
-  io.wb.addr  := addr(31, 0) // todo
+  io.wb.sel   := Mux(last_round, io.cpu.req.bits.sel, "b1111".U)
+  io.wb.we    := last_round && io.cpu.req.bits.we // 最后一轮使用cpu给的we，否则就是false，读取
+  io.wb.wdata := io.cpu.req.bits.data
+  io.wb.addr  := addr(31, 0)                      // todo
 
   io.cpu.resp.valid     := false.B
   io.cpu.resp.bits.data := io.wb.rdata
@@ -96,17 +96,16 @@ class MMUSimple(implicit c: Config) extends CoreModule {
   switch(state) {
     is(sIdle) {
       when(trans_on && io.cpu.req.valid) {
-        state := sWait
-        addr  := translate1(satp.ppn, va.vpn1)
-        level := 1.U
-        done  := false.B
+        state      := sWait
+        addr       := translate1(satp.ppn, va.vpn1)
+        level      := 1.U
+        last_round := false.B
       }.otherwise {
-        io.wb.cyc   := io.cpu.req.valid     //&& !io.cpu.abort
-        io.wb.stb   := io.cpu.req.valid     //&& !io.cpu.abort
-        io.wb.sel   := io.cpu.req.bits.sel
-        io.wb.addr  := io.cpu.req.bits.addr // 不用reg addr
-        io.wb.wdata := io.cpu.req.bits.data
-        io.wb.we    := io.cpu.req.bits.we
+        io.wb.cyc  := io.cpu.req.valid     //&& !io.cpu.abort
+        io.wb.stb  := io.cpu.req.valid     //&& !io.cpu.abort
+        io.wb.sel  := io.cpu.req.bits.sel
+        io.wb.addr := io.cpu.req.bits.addr // 不用reg addr
+        io.wb.we   := io.cpu.req.bits.we
 
         io.cpu.resp.valid := io.wb.ack //|| io.cpu.abort
       }
@@ -115,7 +114,7 @@ class MMUSimple(implicit c: Config) extends CoreModule {
       io.wb.cyc := true.B
       io.wb.stb := true.B
       when(io.wb.ack) {
-        when(done) {
+        when(last_round) {
           state             := sIdle
           io.cpu.resp.valid := true.B
         }.otherwise {
@@ -137,8 +136,8 @@ class MMUSimple(implicit c: Config) extends CoreModule {
           // step 6
           when(level === 1.U && pte.ppn0.orR)(page_fault("misaligned superpage"))
 
-          // step 7
-          when(!pte.a || io.cpu.req.bits.we && pte.d)(page_fault("a = 0 || store && d = 0"))
+          // todo step 7
+          // when(!pte.a || io.cpu.req.bits.we && pte.d)(page_fault("a = 0 || store && d = 0"))
 
           // step 8, successful
           when(level === 1.U) {
@@ -148,7 +147,14 @@ class MMUSimple(implicit c: Config) extends CoreModule {
           }
           state := sWait
 
-          done := true.B
+          last_round := true.B
+        }.otherwise {
+          // PTE is a pointer to the next level of the page table
+          when(level === 0.U)(page_fault("i < 0"))
+
+          level := 0.U // level -= 1
+          addr  := translate1(pte.ppn, va.vpn0)
+          state := sWait
         }
       }
     }

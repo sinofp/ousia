@@ -67,7 +67,7 @@ class CSR(implicit c: Config) extends CoreModule {
   // sstauts < mstatus
   // sip, sie < mip, mie
   val stvec     = Reg(UInt(sxLen.W))
-  val sscrath   = Reg(UInt(sxLen.W))
+  val sscratch  = Reg(UInt(sxLen.W))
   val sepc      = Reg(UInt(sxLen.W))
   val scause    = Reg(UInt(sxLen.W))
   val stval     = Reg(UInt(sxLen.W))
@@ -98,6 +98,7 @@ class CSR(implicit c: Config) extends CoreModule {
   )
   val misalignedFetch = io.jbr && io.jbr_target(1, 0).orR // C
 
+  val pageFaultFetch = io.inst_page_fault
   val pageFaultLoad  = !io.mem_rw && io.data_page_fault // io.mem_en?
   val pageFaultStore = io.mem_rw && io.data_page_fault  // io.mem_en?
 
@@ -117,7 +118,7 @@ class CSR(implicit c: Config) extends CoreModule {
   val illegalInstruction =
     io.inst_ilgl || mstatus.tvm && (isSFenceVMA || csr_addr === CSRs.satp.U) || mstatus.tsr && isSRet
   val exception          =
-    illegalInstruction || misalignedFetch || misalignedLoad || misalignedStore || isEcall || isEbreak || pageFaultLoad || pageFaultStore || io.inst_page_fault
+    illegalInstruction || misalignedFetch || misalignedLoad || misalignedStore || isEcall || isEbreak || pageFaultLoad || pageFaultStore || pageFaultFetch
 
   // interrupt
   mip.stip := time >= timecmp
@@ -159,7 +160,7 @@ class CSR(implicit c: Config) extends CoreModule {
     CSRs.sip       -> mip.asUInt,
     CSRs.sie       -> mie.asUInt,
     CSRs.stvec     -> stvec,
-    CSRs.sscratch  -> sscrath,
+    CSRs.sscratch  -> sscratch,
     CSRs.sepc      -> sepc,
     CSRs.scause    -> scause,
     CSRs.stval     -> stval,
@@ -178,7 +179,7 @@ class CSR(implicit c: Config) extends CoreModule {
   val cause_xcpt = MuxCase(
     0.U,
     Seq(
-      io.inst_page_fault -> Causes.fetch_page_fault.U,
+      pageFaultFetch     -> Causes.fetch_page_fault.U,
       illegalInstruction -> Causes.illegal_instruction.U,
       isEcall            -> (Causes.user_ecall.U + PRV),
       isEbreak           -> Causes.breakpoint.U,
@@ -193,10 +194,10 @@ class CSR(implicit c: Config) extends CoreModule {
   val tval       = MuxCase(
     0.U,
     Seq(
-      io.inst_ilgl    -> io.inst,
-      misalignedFetch -> io.jbr_target,
-      misalignedStore -> io.mem_addr,
-      misalignedLoad  -> io.mem_addr,
+      pageFaultFetch                                                         -> io.pc,
+      illegalInstruction                                                     -> io.inst,
+      misalignedFetch                                                        -> io.jbr_target,
+      (misalignedStore || misalignedLoad || pageFaultLoad || pageFaultStore) -> io.mem_addr,
     ),
   )
 
@@ -264,7 +265,7 @@ class CSR(implicit c: Config) extends CoreModule {
       .elsewhen(csr_addr === CSRs.sie.U)(mie := wdata.asTypeOf(new Mie(mxLen)))
       .elsewhen(csr_addr === CSRs.sip.U)(mip := wdata.asTypeOf(new Mip(mxLen)))
       .elsewhen(csr_addr === CSRs.stvec.U)(stvec := wdata(sxLen - 1, 2) ## 0.U(2.W)) // 只支持直接模式
-      .elsewhen(csr_addr === CSRs.sscratch.U)(sscrath := wdata)
+      .elsewhen(csr_addr === CSRs.sscratch.U)(sscratch := wdata)
       .elsewhen(csr_addr === CSRs.sepc.U)(sepc := wdata)
       .elsewhen(csr_addr === CSRs.scause.U)(scause := wdata)
       .elsewhen(csr_addr === CSRs.stval.U)(stval := wdata)

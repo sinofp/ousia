@@ -37,6 +37,7 @@ def prepare(elf_dir, elf_name):
 
 
 @pytest.mark.parametrize("inst", insts)
+@pytest.mark.timeout(60)
 def test_inst(inst):
     elf_dir = "/usr/riscv32-unknown-elf/share/riscv-tests/isa"
     with prepare(elf_dir, inst) as top_v:
