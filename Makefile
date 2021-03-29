@@ -62,23 +62,23 @@ meminit/firmware.verilog: firmware/firmware meminit
 get-meminit: $(RVTEST_VERILOG) meminit/firmware.verilog
 
 # [tools]
-verilator:
-	git submodule update --init --depth 1 tool/$@
+tool/verilator:
+	git submodule update --init --depth 1 $@
 	cd tool/verilator && \
 		autoconf && \
 		./configure && \
 		make -j $$(nproc) && \
 		sudo make install
 
-gcc:
+tool/riscv-gnu-toolchain:
 	# 不能用submodule，因为riscv-gnu-toolchain/.git必须是目录，不能是文件
-	git clone --depth 1 https://github.com/riscv/riscv-gnu-toolchain tool/riscv-gnu-toolchain
+	git clone --depth 1 https://github.com/riscv/riscv-gnu-toolchain $@
 	cd tool/riscv-gnu-toolchain && \
 		./configure --prefix=$(RISCV) --with-arch=rv32i --with-abi=ilp32 --disable-gdb && \
 		make -j $$(nproc)
 
-riscv-tests:
-	git submodule update --init --recursive --depth 1 tool/$@
+tool/riscv-tests:
+	git submodule update --init --recursive --depth 1 $@
 	cd tool/riscv-tests && \
 		./configure --prefix=$(RISCV) && \
 		sed -i 's|install: all|install: isa|' Makefile && \
@@ -111,9 +111,9 @@ firmware/%.o: tool/riscv-tests/isa/rv32ui/%.S firmware/riscv_test.h
 	$(TOOLCHAIN_PREFIX)gcc -c -march=rv32i -Ifirmware -Itool/riscv-tests/isa/macros/scalar -DTEST_NAME=$(notdir $(basename $@)) -o $@ $<
 
 # [verilog]
-Naive.v: src build.sbt
+Naive.v: src/ build.sc
 	git submodule update --init --depth 1 tool/api-config-chipsalliance/
-	sbt run
+	mill ousia.run
 
 build: ousia.core Naive.v
 	fusesoc --cores-root=. run ousia
@@ -126,6 +126,9 @@ cyc10: firmware/firmware00.hex build
 clean:
 	-rm -r meminit firmware/firmware* __pycache__ build
 	cocotb-clean
-	sbt clean
+	mill clean
 
-.PHONY: verilator gcc riscv-tests cyc10 clean test-inst test-misc test get-meminit
+.bsp:
+	mill mill.bsp.BSP/install
+
+.PHONY: cyc10 clean test-inst test-misc test get-meminit
