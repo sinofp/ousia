@@ -5,75 +5,27 @@ on:
   pull_request:
 
 jobs:
-  get-meminit:
-    runs-on: ubuntu-20.04
-    steps:
-      - uses: actions/checkout@v2
-      - name: Install dependencies
-        run: |
-          sudo apt update
-          sudo apt-get install autoconf automake autotools-dev curl python3 libmpc-dev libmpfr-dev libgmp-dev gawk build-essential bison flex texinfo gperf libtool patchutils bc zlib1g-dev libexpat-dev
-      - name: Prepare meminit
-        run: make gcc riscv-tests get-meminit
-      - uses: actions/upload-artifact@v2
-        with:
-          name: my-meminit
-          path: meminit
-  get-verilog:
+  test:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
       - uses: coursier/cache-action@v5
-      - name: Install dependencies
+      - name: Install dependencies for gcc
         run: |
           sudo apt update
-          sudo apt install verilator
-          sudo pip install fusesoc
-      - name: Prepare Verilog
+          sudo apt-get install autoconf automake autotools-dev curl python3 libmpc-dev libmpfr-dev libgmp-dev gawk build-essential bison flex texinfo gperf libtool patchutils bc zlib1g-dev libexpat-dev
+      - run: make tool/riscv-gnu-toolchain
+      - run: make riscv-tests
+      - name: Install dependencies for verilator
         run: |
+          sudo apt update
+          sudo apt-get install git make autoconf g++ flex bison libfl2 libfl-dev
+      - run: sudo make verilator
+      - name: Install depencencies for test
+        run: |
+          sudo pip install -r requirements.txt
           fusesoc init -y
-          make build
-      - uses: actions/upload-artifact@v2
-        with:
-          name: my-verilog
-          path: build
-  riscv-tests:
-    needs: [get-verilog, get-meminit]
-    runs-on: ubuntu-20.04
-    steps:
-      - uses: actions/checkout@v2
-      - name: Install dependencies
-        run: |
-          sudo apt update
-          sudo apt install verilator
-          sudo pip install cocotb-test pytest-xdist[psutil]
-      - uses: actions/download-artifact@v2
-        with:
-          name: my-verilog
-          path: build
-      - uses: actions/download-artifact@v2
-        with:
-          name: my-meminit
-          path: meminit
-      - name: Test
-        run: pytest tb/test.py -k inst -n auto
-  misc-tests:
-    needs: [get-verilog, get-meminit]
-    runs-on: ubuntu-20.04
-    steps:
-      - uses: actions/checkout@v2
-      - name: Install dependencies
-        run: |
-          sudo apt update
-          sudo apt install verilator
-          sudo pip install cocotb-test pytest-xdist[psutil]
-      - uses: actions/download-artifact@v2
-        with:
-          name: my-verilog
-          path: build
-      - uses: actions/download-artifact@v2
-        with:
-          name: my-meminit
-          path: meminit
-      - name: Test
-        run: pytest tb/test.py -k 'not inst' -n auto
+          sudo curl -L https://github.com/com-lihaoyi/mill/releases/download/0.9.5/0.9.5 -o /usr/local/bin/mill && sudo chmod +x /usr/local/bin/mill
+      - run: make Naive.v
+      - run: make test-inst
+      - run: make test-misc

@@ -29,9 +29,9 @@ async def sv32_test(dut):
     await FallingEdge(dut.clock)
     dut.reset <= 0
 
-    dut.isMachine_0 <= 0
-    dut.satp_0_mode <= 1
-    dut.satp_0_ppn <= int(satp_ppn, 2)
+    dut.io_cpu_req_bits_PRV <= 0
+    dut.io_cpu_req_bits_satp_mode <= 1
+    dut.io_cpu_req_bits_satp_ppn <= int(satp_ppn, 2)
 
     dut.io_cpu_req_valid <= 1
     dut.io_cpu_req_bits_addr <= va
@@ -69,10 +69,11 @@ async def sv32_test(dut):
     dut.io_wb_ack <= 1
     dut.io_wb_rdata <= 42
     assert dut.io_cpu_resp_valid == 0
-    await FallingEdge(dut.clock)
+    assert dut.last_round == 1
+    await RisingEdge(dut.clock)
     dut.io_wb_ack <= 0
 
     # resp
-    assert dut.done == 1
+    # assert dut.last_round == 0
     assert dut.io_cpu_resp_valid == 1
     assert dut.io_cpu_resp_bits_data == 42
