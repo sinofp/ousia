@@ -2,28 +2,28 @@ RISCV = $(PWD)/tool/riscv
 TOOLCHAIN_PREFIX = $(RISCV)/bin/riscv32-unknown-elf-
 
 RVTEST_ISA_PATH = $(RISCV)/share/riscv-tests/isa
-TEST_INSTS ?= rv32mi-p-breakpoint  rv32mi-p-csr  rv32mi-p-illegal  rv32mi-p-ma_addr \
-	      rv32mi-p-ma_fetch  rv32mi-p-mcsr  rv32mi-p-sbreak  rv32mi-p-shamt \
-	      rv32ui-p-add  rv32ui-p-addi  rv32ui-p-and  rv32ui-p-andi \
-	      rv32ui-p-auipc  rv32ui-p-beq  rv32ui-p-bge  rv32ui-p-bgeu \
-	      rv32ui-p-blt  rv32ui-p-bltu  rv32ui-p-bne  rv32ui-p-jal \
-	      rv32ui-p-jalr  rv32ui-p-lb  rv32ui-p-lbu  rv32ui-p-lh \
-	      rv32ui-p-lhu  rv32ui-p-lui  rv32ui-p-lw  rv32ui-p-or \
-	      rv32ui-p-ori  rv32ui-p-sb  rv32ui-p-sh  rv32ui-p-simple \
-	      rv32ui-p-sll  rv32ui-p-slli  rv32ui-p-slt  rv32ui-p-slti \
-	      rv32ui-p-sltiu  rv32ui-p-sltu  rv32ui-p-sra  rv32ui-p-srai \
-	      rv32ui-p-srl  rv32ui-p-srli  rv32ui-p-sub  rv32ui-p-sw \
-	      rv32ui-p-xor  rv32ui-p-xori  rv32ui-p-fence_i \
-	      rv32ui-v-add rv32ui-v-addi rv32ui-v-and rv32ui-v-andi \
-	      rv32ui-v-auipc rv32ui-v-bge rv32ui-v-bgeu \
-	      rv32ui-v-blt rv32ui-v-bltu rv32ui-v-bne \
-	      rv32ui-v-jal rv32ui-v-jalr rv32ui-v-lb rv32ui-v-lbu \
-	      rv32ui-v-lh rv32ui-v-lhu rv32ui-v-lui rv32ui-v-lw \
-	      rv32ui-v-or rv32ui-v-ori rv32ui-v-sb rv32ui-v-sh \
-	      rv32ui-v-simple rv32ui-v-sll rv32ui-v-slli rv32ui-v-slt \
-	      rv32ui-v-slti rv32ui-v-sltiu rv32ui-v-sltu rv32ui-v-sra \
-	      rv32ui-v-srai rv32ui-v-srl rv32ui-v-srli rv32ui-v-sub \
-	      rv32ui-v-sw rv32ui-v-xor rv32ui-v-xori # rv32mi-p-scall rv32ui-v-beq rv32ui-v-fence_i
+TEST_INSTS = rv32mi-p-breakpoint  rv32mi-p-csr  rv32mi-p-illegal  rv32mi-p-ma_addr \
+	     rv32mi-p-ma_fetch  rv32mi-p-mcsr  rv32mi-p-sbreak  rv32mi-p-shamt \
+	     rv32ui-p-add  rv32ui-p-addi  rv32ui-p-and  rv32ui-p-andi \
+	     rv32ui-p-auipc  rv32ui-p-beq  rv32ui-p-bge  rv32ui-p-bgeu \
+	     rv32ui-p-blt  rv32ui-p-bltu  rv32ui-p-bne  rv32ui-p-jal \
+	     rv32ui-p-jalr  rv32ui-p-lb  rv32ui-p-lbu  rv32ui-p-lh \
+	     rv32ui-p-lhu  rv32ui-p-lui  rv32ui-p-lw  rv32ui-p-or \
+	     rv32ui-p-ori  rv32ui-p-sb  rv32ui-p-sh  rv32ui-p-simple \
+	     rv32ui-p-sll  rv32ui-p-slli  rv32ui-p-slt  rv32ui-p-slti \
+	     rv32ui-p-sltiu  rv32ui-p-sltu  rv32ui-p-sra  rv32ui-p-srai \
+	     rv32ui-p-srl  rv32ui-p-srli  rv32ui-p-sub  rv32ui-p-sw \
+	     rv32ui-p-xor  rv32ui-p-xori  rv32ui-p-fence_i \
+	     rv32ui-v-add rv32ui-v-addi rv32ui-v-and rv32ui-v-andi \
+	     rv32ui-v-auipc rv32ui-v-bge rv32ui-v-bgeu \
+	     rv32ui-v-blt rv32ui-v-bltu rv32ui-v-bne \
+	     rv32ui-v-jal rv32ui-v-jalr rv32ui-v-lb rv32ui-v-lbu \
+	     rv32ui-v-lh rv32ui-v-lhu rv32ui-v-lui rv32ui-v-lw \
+	     rv32ui-v-or rv32ui-v-ori rv32ui-v-sb rv32ui-v-sh \
+	     rv32ui-v-simple rv32ui-v-sll rv32ui-v-slli rv32ui-v-slt \
+	     rv32ui-v-slti rv32ui-v-sltiu rv32ui-v-sltu rv32ui-v-sra \
+	     rv32ui-v-srai rv32ui-v-srl rv32ui-v-srli rv32ui-v-sub \
+	     rv32ui-v-sw rv32ui-v-xor rv32ui-v-xori rv32ui-v-beq # rv32mi-p-scall rv32ui-v-fence_i
 PYTEST_EXTRA_ARGS = -n auto
 RVTEST_VERILOG = $(addprefix meminit/, $(addsuffix .verilog, $(TEST_INSTS)))
 
@@ -82,6 +82,10 @@ riscv-tests:
 	cd tool/riscv-tests && \
 		./configure --prefix=$(RISCV) && \
 		sed -i 's|install: all|install: isa|' Makefile && \
+		sed -i 's|rv32ui,-march=rv32g|rv32ui,-march=rv32if|' isa/Makefile && \
+		sed -i 's|rv32si,-march=rv32g|rv32si,-march=rv32if|' isa/Makefile && \
+		sed -i 's|rv32mi,-march=rv32g|rv32mi,-march=rv32if|' isa/Makefile && \
+		sed -i 's/echo .* | md5/echo rv32ui-v-sw | md5/' isa/Makefile && \
 		make install RISCV_PREFIX=$(TOOLCHAIN_PREFIX)
 
 # [firmware]
