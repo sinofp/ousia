@@ -6,7 +6,6 @@ import chisel3.util._
 import Consts._
 import Instructions._
 import ALU._
-import chisel3.util.experimental.BoringUtils
 
 class Naive(implicit c: Config) extends CoreModule {
   val io = IO(new Bundle {
@@ -22,9 +21,6 @@ class Naive(implicit c: Config) extends CoreModule {
   val imm       = Wire(UInt(xLen.W))
   val jal       = WireInit(Bool(), false.B)
   val jalr      = WireInit(Bool(), false.B)
-  val mem_en    = WireInit(Bool(), false.B)
-  val mem_load  = WireInit(Bool(), false.B)
-  val alu       = Module(new ALU)
   val xcpt      = WireInit(Bool(), false.B)
   val xret      = WireInit(Bool(), false.B)
   val xtvec     = Wire(UInt(xLen.W))
@@ -65,60 +61,61 @@ class Naive(implicit c: Config) extends CoreModule {
     val mem_rw  = Bool()
     val mem_sz  = UInt(SZ_MEM_SZ.W)
     val csr_cmd = UInt(SZ_CSR_CMD.W)
+    val amo     = Bool()
   }
 
   implicit def uint2BitPat(x: UInt): BitPat  = BitPat(x)
-  def unimpl(legal: BitPat = Y): Seq[BitPat] = Seq(legal, FMT_WIP, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_N)
+  def unimpl(legal: BitPat = Y): Seq[BitPat] = Seq(legal, FMT_WIP, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_N, N)
 
   val table: Seq[(BitPat, Seq[BitPat])] = Seq(
-    BEQ        -> Seq(Y, FMT_SB, Y, N, N, FN_SEQ, N, X, MEM_B, CSR_CMD_N),
-    BNE        -> Seq(Y, FMT_SB, Y, N, N, FN_SNE, N, X, MEM_B, CSR_CMD_N),
-    BLT        -> Seq(Y, FMT_SB, Y, N, N, FN_SLT, N, X, MEM_B, CSR_CMD_N),
-    BGE        -> Seq(Y, FMT_SB, Y, N, N, FN_SGE, N, X, MEM_B, CSR_CMD_N),
-    BLTU       -> Seq(Y, FMT_SB, Y, N, N, FN_SLTU, N, X, MEM_B, CSR_CMD_N),
-    BGEU       -> Seq(Y, FMT_SB, Y, N, N, FN_SGEU, N, X, MEM_B, CSR_CMD_N),
-    JALR       -> Seq(Y, FMT_I, N, Y, N, FN_ADD, N, X, MEM_B, CSR_CMD_N),
-    JAL        -> Seq(Y, FMT_UJ, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_N),
-    LUI        -> Seq(Y, FMT_U, N, N, Y, FN_ADD, N, X, MEM_B, CSR_CMD_N),
-    AUIPC      -> Seq(Y, FMT_U, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_N),
-    ADDI       -> Seq(Y, FMT_I, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_N),
-    SLLI       -> Seq(Y, FMT_I, N, N, N, FN_SL, N, X, MEM_B, CSR_CMD_N),
-    SLTI       -> Seq(Y, FMT_I, N, N, N, FN_SLT, N, X, MEM_B, CSR_CMD_N),
-    SLTIU      -> Seq(Y, FMT_I, N, N, N, FN_SLTU, N, X, MEM_B, CSR_CMD_N),
-    XORI       -> Seq(Y, FMT_I, N, N, N, FN_XOR, N, X, MEM_B, CSR_CMD_N),
-    SRLI       -> Seq(Y, FMT_I, N, N, N, FN_SR, N, X, MEM_B, CSR_CMD_N),
-    SRAI       -> Seq(Y, FMT_I, N, N, N, FN_SRA, N, X, MEM_B, CSR_CMD_N),
-    ORI        -> Seq(Y, FMT_I, N, N, N, FN_OR, N, X, MEM_B, CSR_CMD_N),
-    ANDI       -> Seq(Y, FMT_I, N, N, N, FN_AND, N, X, MEM_B, CSR_CMD_N),
-    ADD        -> Seq(Y, FMT_R, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_N),
-    SUB        -> Seq(Y, FMT_R, N, N, N, FN_SUB, N, X, MEM_B, CSR_CMD_N),
-    SLL        -> Seq(Y, FMT_R, N, N, N, FN_SL, N, X, MEM_B, CSR_CMD_N),
-    SLT        -> Seq(Y, FMT_R, N, N, N, FN_SLT, N, X, MEM_B, CSR_CMD_N),
-    SLTU       -> Seq(Y, FMT_R, N, N, N, FN_SLTU, N, X, MEM_B, CSR_CMD_N),
-    XOR        -> Seq(Y, FMT_R, N, N, N, FN_XOR, N, X, MEM_B, CSR_CMD_N),
-    SRL        -> Seq(Y, FMT_R, N, N, N, FN_SR, N, X, MEM_B, CSR_CMD_N),
-    SRA        -> Seq(Y, FMT_R, N, N, N, FN_SRA, N, X, MEM_B, CSR_CMD_N),
-    OR         -> Seq(Y, FMT_R, N, N, N, FN_OR, N, X, MEM_B, CSR_CMD_N),
-    AND        -> Seq(Y, FMT_R, N, N, N, FN_AND, N, X, MEM_B, CSR_CMD_N),
-    LB         -> Seq(Y, FMT_I, N, N, N, FN_ADD, Y, N, MEM_B, CSR_CMD_N),
-    LH         -> Seq(Y, FMT_I, N, N, N, FN_ADD, Y, N, MEM_H, CSR_CMD_N),
-    LW         -> Seq(Y, FMT_I, N, N, N, FN_ADD, Y, N, MEM_W, CSR_CMD_N),
-    LBU        -> Seq(Y, FMT_I, N, N, N, FN_ADD, Y, N, MEM_BU, CSR_CMD_N),
-    LHU        -> Seq(Y, FMT_I, N, N, N, FN_ADD, Y, N, MEM_HU, CSR_CMD_N),
-    SB         -> Seq(Y, FMT_S, N, N, N, FN_ADD, Y, Y, MEM_B, CSR_CMD_N),
-    SH         -> Seq(Y, FMT_S, N, N, N, FN_ADD, Y, Y, MEM_H, CSR_CMD_N),
-    SW         -> Seq(Y, FMT_S, N, N, N, FN_ADD, Y, Y, MEM_W, CSR_CMD_N),
+    BEQ        -> Seq(Y, FMT_SB, Y, N, N, FN_SEQ, N, X, MEM_B, CSR_CMD_N, N),
+    BNE        -> Seq(Y, FMT_SB, Y, N, N, FN_SNE, N, X, MEM_B, CSR_CMD_N, N),
+    BLT        -> Seq(Y, FMT_SB, Y, N, N, FN_SLT, N, X, MEM_B, CSR_CMD_N, N),
+    BGE        -> Seq(Y, FMT_SB, Y, N, N, FN_SGE, N, X, MEM_B, CSR_CMD_N, N),
+    BLTU       -> Seq(Y, FMT_SB, Y, N, N, FN_SLTU, N, X, MEM_B, CSR_CMD_N, N),
+    BGEU       -> Seq(Y, FMT_SB, Y, N, N, FN_SGEU, N, X, MEM_B, CSR_CMD_N, N),
+    JALR       -> Seq(Y, FMT_I, N, Y, N, FN_ADD, N, X, MEM_B, CSR_CMD_N, N),
+    JAL        -> Seq(Y, FMT_UJ, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_N, N),
+    LUI        -> Seq(Y, FMT_U, N, N, Y, FN_ADD, N, X, MEM_B, CSR_CMD_N, N),
+    AUIPC      -> Seq(Y, FMT_U, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_N, N),
+    ADDI       -> Seq(Y, FMT_I, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_N, N),
+    SLLI       -> Seq(Y, FMT_I, N, N, N, FN_SL, N, X, MEM_B, CSR_CMD_N, N),
+    SLTI       -> Seq(Y, FMT_I, N, N, N, FN_SLT, N, X, MEM_B, CSR_CMD_N, N),
+    SLTIU      -> Seq(Y, FMT_I, N, N, N, FN_SLTU, N, X, MEM_B, CSR_CMD_N, N),
+    XORI       -> Seq(Y, FMT_I, N, N, N, FN_XOR, N, X, MEM_B, CSR_CMD_N, N),
+    SRLI       -> Seq(Y, FMT_I, N, N, N, FN_SR, N, X, MEM_B, CSR_CMD_N, N),
+    SRAI       -> Seq(Y, FMT_I, N, N, N, FN_SRA, N, X, MEM_B, CSR_CMD_N, N),
+    ORI        -> Seq(Y, FMT_I, N, N, N, FN_OR, N, X, MEM_B, CSR_CMD_N, N),
+    ANDI       -> Seq(Y, FMT_I, N, N, N, FN_AND, N, X, MEM_B, CSR_CMD_N, N),
+    ADD        -> Seq(Y, FMT_R, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_N, N),
+    SUB        -> Seq(Y, FMT_R, N, N, N, FN_SUB, N, X, MEM_B, CSR_CMD_N, N),
+    SLL        -> Seq(Y, FMT_R, N, N, N, FN_SL, N, X, MEM_B, CSR_CMD_N, N),
+    SLT        -> Seq(Y, FMT_R, N, N, N, FN_SLT, N, X, MEM_B, CSR_CMD_N, N),
+    SLTU       -> Seq(Y, FMT_R, N, N, N, FN_SLTU, N, X, MEM_B, CSR_CMD_N, N),
+    XOR        -> Seq(Y, FMT_R, N, N, N, FN_XOR, N, X, MEM_B, CSR_CMD_N, N),
+    SRL        -> Seq(Y, FMT_R, N, N, N, FN_SR, N, X, MEM_B, CSR_CMD_N, N),
+    SRA        -> Seq(Y, FMT_R, N, N, N, FN_SRA, N, X, MEM_B, CSR_CMD_N, N),
+    OR         -> Seq(Y, FMT_R, N, N, N, FN_OR, N, X, MEM_B, CSR_CMD_N, N),
+    AND        -> Seq(Y, FMT_R, N, N, N, FN_AND, N, X, MEM_B, CSR_CMD_N, N),
+    LB         -> Seq(Y, FMT_I, N, N, N, FN_ADD, Y, N, MEM_B, CSR_CMD_N, N),
+    LH         -> Seq(Y, FMT_I, N, N, N, FN_ADD, Y, N, MEM_H, CSR_CMD_N, N),
+    LW         -> Seq(Y, FMT_I, N, N, N, FN_ADD, Y, N, MEM_W, CSR_CMD_N, N),
+    LBU        -> Seq(Y, FMT_I, N, N, N, FN_ADD, Y, N, MEM_BU, CSR_CMD_N, N),
+    LHU        -> Seq(Y, FMT_I, N, N, N, FN_ADD, Y, N, MEM_HU, CSR_CMD_N, N),
+    SB         -> Seq(Y, FMT_S, N, N, N, FN_ADD, Y, Y, MEM_B, CSR_CMD_N, N),
+    SH         -> Seq(Y, FMT_S, N, N, N, FN_ADD, Y, Y, MEM_H, CSR_CMD_N, N),
+    SW         -> Seq(Y, FMT_S, N, N, N, FN_ADD, Y, Y, MEM_W, CSR_CMD_N, N),
     FENCE      -> unimpl(),
     FENCE_I    -> unimpl(),
-    AMOADD_W   -> unimpl(),
-    AMOXOR_W   -> unimpl(),
-    AMOOR_W    -> unimpl(),
-    AMOAND_W   -> unimpl(),
-    AMOMIN_W   -> unimpl(),
-    AMOMAX_W   -> unimpl(),
-    AMOMINU_W  -> unimpl(),
-    AMOMAXU_W  -> unimpl(),
-    AMOSWAP_W  -> unimpl(),
+    AMOADD_W   -> Seq(Y, FMT_R, N, N, N, FN_ADD, Y, N, MEM_W, CSR_CMD_N, Y),
+    AMOXOR_W   -> Seq(Y, FMT_R, N, N, N, FN_XOR, Y, N, MEM_W, CSR_CMD_N, Y),
+    AMOOR_W    -> Seq(Y, FMT_R, N, N, N, FN_OR, Y, N, MEM_W, CSR_CMD_N, Y),
+    AMOAND_W   -> Seq(Y, FMT_R, N, N, N, FN_AND, Y, N, MEM_W, CSR_CMD_N, Y),
+    AMOMIN_W   -> Seq(Y, FMT_R, N, N, N, FN_SLT, Y, N, MEM_W, CSR_CMD_N, Y),
+    AMOMAX_W   -> Seq(Y, FMT_R, N, N, N, FN_SLT, Y, N, MEM_W, CSR_CMD_N, Y),
+    AMOMINU_W  -> Seq(Y, FMT_R, N, N, N, FN_SLTU, Y, N, MEM_W, CSR_CMD_N, Y),
+    AMOMAXU_W  -> Seq(Y, FMT_R, N, N, N, FN_SLTU, Y, N, MEM_W, CSR_CMD_N, Y),
+    AMOSWAP_W  -> Seq(Y, FMT_R, N, N, N, FN_X, Y, N, MEM_W, CSR_CMD_N, Y),
     LR_W       -> unimpl(),
     SC_W       -> unimpl(),
     ECALL      -> Seq(Y, FMT_IC, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_P),
@@ -140,10 +137,9 @@ class Naive(implicit c: Config) extends CoreModule {
   val default      = unimpl(N)
   val firstDecoder = DecodeLogic(inst, default, table)
   val cs           = Wire(new FirstCtrlSigs) // 按性能讲，是不是一口气decode完更快？但那样代码不是纵向长就是横向长
-  cs.getElements.reverse zip firstDecoder map { case (data, int) => data := int }
+  cs.getElements.reverse zip firstDecoder foreach { case (data, int) => data := int }
 
-  mem_en := cs.mem_en
-  jal  := cs.fmt === FMT_UJ
+  jal := cs.fmt === FMT_UJ
   jalr := cs.jalr
 
   val rs1 = inst(19, 15)
@@ -155,8 +151,7 @@ class Naive(implicit c: Config) extends CoreModule {
   rf.io.raddr(1) := rs2
 
   Rrs1 := rf.io.rdata(0)
-  val Rrs2   = rf.io.rdata(1)
-  val alu_fn = cs.alu_fn
+  val Rrs2 = rf.io.rdata(1)
 
   def ZXT(x: UInt, len: Int = 32) = 0.U((len - x.getWidth).W) ## x
   def SXT(x: UInt, len: Int = 32) = Fill(len - x.getWidth, x(x.getWidth - 1)) ## x
@@ -185,13 +180,16 @@ class Naive(implicit c: Config) extends CoreModule {
       A2_RS2,
       Seq(
         (cs.fmt === FMT_I || cs.fmt === FMT_U || cs.fmt === FMT_UJ || cs.fmt === FMT_S || cs.fmt === FMT_ICI) -> A2_IMM,
-        (cs.fmt === FMT_IC)                                                                                   -> A2_ZERO,
+        (cs.fmt === FMT_IC || cs.amo)                                                                         -> A2_ZERO,
       ),
     )
 
-  mem_load := cs.mem_en && !cs.mem_rw
-  val mem_store = cs.mem_en && cs.mem_rw
-  val mem_size  = cs.mem_sz
+  val dcache_resp = dcache.io.cpu.resp
+  val mem_valid_2 = Counter(0 until 2, dcache_resp.valid, exec_start)._1 === 1.U
+  val mem_rw      = Mux(cs.amo, mem_valid_2, cs.mem_rw)
+  val mem_load    = cs.mem_en && !mem_rw
+  val mem_store   = cs.mem_en && mem_rw
+  val mem_size    = cs.mem_sz
 
   val sel_rf_wdata =
     MuxCase(
@@ -200,9 +198,10 @@ class Naive(implicit c: Config) extends CoreModule {
     )
 
   // EX
+  val alu = Module(new ALU)
   alu.io.in1       := MuxLookup(sel_alu1, 0.U, Seq(A1_PC -> pc, A1_RS1 -> Rrs1))
   alu.io.in2       := MuxLookup(sel_alu2, 0.U, Seq(A2_IMM -> imm, A2_RS2 -> Rrs2))
-  alu.io.fn        := alu_fn
+  alu.io.fn        := Mux(cs.amo, FN_ADD, cs.alu_fn)
   alu.io.dw        := false.B
   alu.io.adder_out := DontCare
 
@@ -213,14 +212,14 @@ class Naive(implicit c: Config) extends CoreModule {
   // MEM
   io.dwb              <> dcache.io.wb
   dcache.io.cpu.abort := xcpt
-  val dcache_req  = dcache.io.cpu.req
-  val dcache_resp = dcache.io.cpu.resp
+  val dcache_req = dcache.io.cpu.req
   // 有时会出现lw xx, ?(xx)这样同一个寄存器即生成地址又接受数据的情况。因为现在等待访存结束是重复执行那条访存指令，所以同一条指令，地址会变
-  val mem_addr    = Mux(exec_start, alu.io.out, RegEnable(alu.io.out, exec_start))
+  val mem_addr   = Mux(exec_start, alu.io.out, RegEnable(alu.io.out, exec_start))
   dcache_req.bits.satp := satp
   dcache_req.bits.PRV  := PRV
   dcache_req.bits.addr := mem_addr(31, 2) ## 0.U(2.W)
-  dcache_req.valid     := cs.mem_en
+  //                                    v  interval between AMO single-read & single-write
+  dcache_req.valid     := cs.mem_en && !RegNext(dcache_resp.valid)
   // 这玩意写进decode里？还是整个LSU出来
   val dcache_sel = MuxCase(
     "b1111".U,
@@ -255,18 +254,30 @@ class Naive(implicit c: Config) extends CoreModule {
     )
   }
   // write
-  dcache_req.bits.we := mem_store
+  val amoAluOut  = Wire(UInt(xLen.W))
+  dcache_req.bits.we   := mem_store
   dcache_req.bits.sel  := dcache_sel
-  dcache_req.bits.data := MuxLookup(
-    dcache_sel,
-    Rrs2,
-    Seq(
-      "b1100".U -> Rrs2(15, 0) ## 0.U(16.W),
-      "b0010".U -> 0.U(16.W) ## Rrs2(7, 0) ## 0.U(8.W),
-      "b0100".U -> 0.U(8.W) ## Rrs2(7, 0) ## 0.U(16.W),
-      "b1000".U -> Rrs2(7, 0) ## 0.U(24.W),
+  dcache_req.bits.data := Mux(
+    cs.amo,
+    amoAluOut,
+    MuxLookup(
+      dcache_sel,
+      Rrs2,
+      Seq(
+        "b1100".U -> Rrs2(15, 0) ## 0.U(16.W),
+        "b0010".U -> 0.U(16.W) ## Rrs2(7, 0) ## 0.U(8.W),
+        "b0100".U -> 0.U(8.W) ## Rrs2(7, 0) ## 0.U(16.W),
+        "b1000".U -> Rrs2(7, 0) ## 0.U(24.W),
+      ),
     ),
   )
+  // amo
+  val amoAlu = Module(new AMOALU)
+  amoAlu.io.funct5     := inst(31, 27)
+  amoAlu.io.fn         := cs.alu_fn
+  amoAlu.io.in1        := mem_out
+  amoAlu.io.in2        := Rrs2
+  amoAluOut            := RegEnable(amoAlu.io.out, dcache_resp.valid)
 
   // WB
   val csr = Module(new CSR)
@@ -278,7 +289,7 @@ class Naive(implicit c: Config) extends CoreModule {
   csr.io.data_page_fault := dcache_resp.valid && dcache_resp.bits.page_fault // valid?
   csr.io.mem_addr        := mem_addr
   csr.io.mem_en          := cs.mem_en
-  csr.io.mem_rw          := cs.mem_rw
+  csr.io.mem_rw          := mem_rw
   csr.io.mem_sz          := cs.mem_sz
   csr.io.cmd             := cs.csr_cmd
   csr.io.rdIsX0          := !rd.orR
@@ -293,7 +304,8 @@ class Naive(implicit c: Config) extends CoreModule {
   satp                   := csr.io.satp
   PRV                    := csr.io.PRV
 
-  rf.io.wen   := (cs.fmt =/= FMT_S && cs.fmt =/= FMT_SB && cs.fmt =/= FMT_WIP) && !xcpt
+  //                                                                                           v   only update rf when read in AMO
+  rf.io.wen   := ((cs.fmt =/= FMT_S && cs.fmt =/= FMT_SB && cs.fmt =/= FMT_WIP && !cs.amo) || !mem_rw && dcache_resp.valid) && !xcpt
   rf.io.waddr := rd
   rf.io.wdata := MuxLookup(
     sel_rf_wdata,
@@ -319,7 +331,6 @@ class Naive(implicit c: Config) extends CoreModule {
   switch(state) {
     is(sFetch) {
       icache_req.valid := true.B
-//      inst             := NOP_INST
       when(xcpt) {
         pc        := xtvec
         next_inst := true.B
@@ -337,7 +348,7 @@ class Naive(implicit c: Config) extends CoreModule {
         go_fetch(xepc)
       }.elsewhen(jbr) {
         go_fetch(jbr_target)
-      }.elsewhen(!mem_en || dcache_resp.valid) {
+      }.elsewhen(!cs.mem_en || !cs.amo && dcache_resp.valid || cs.amo && mem_valid_2 && dcache_resp.valid) {
         // 不用memory，或者用，但是已经用完了 -> commit
         go_fetch(pcp4)
       }

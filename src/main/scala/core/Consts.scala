@@ -51,6 +51,16 @@ object Consts {
   val PRV_S = "b01".U
   val PRV_M = "b11".U
 
+  val AMO_ADD_W_FUNCT5  = "b00000".U
+  val AMO_XOR_W_FUNCT5  = "b00100".U
+  val AMO_OR_W_FUNCT5   = "b01000".U
+  val AMO_AND_W_FUNCT5  = "b01100".U
+  val AMO_MIN_W_FUNCT5  = "b10000".U
+  val AMO_MAX_W_FUNCT5  = "b10100".U
+  val AMO_MINU_W_FUNCT5 = "b11000".U
+  val AMO_MAXU_W_FUNCT5 = "b11100".U
+  val AMO_SWAP_W_FUNCT5 = "b00001".U
+
   def X = BitPat("b?")
   def N = BitPat("b0")
   def Y = BitPat("b1")
