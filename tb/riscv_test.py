@@ -80,40 +80,26 @@ async def riscv_test(dut):
     cnt = 0
 
     while True:
+        # if True:
         if cpu.next_inst == 1:
             cnt = 0
             inst = "{:08x}".format(b2d(cpu.inst))
             pattern.append(inst)
             print(
-                "pc = {:8x} ({}) {}|va={:x}|pa={:x}|satp_ppn={:x}|pte_ppn={:x}|s={}|pf={}|xcpt={}|scause={}|deleg2S={}|rdata={}|wdata={}|we={}|a0={:x}|a1={:x}|a3={:x}|a4={:x}|a5={:x}|a7={:x}|t0={:x}".format(
+                "pc = {:9x} ({}) {}|a0={:x}|a1={:x}|a2={:x}|a3={:x}|a4={:x}|mem_addr={:x}|mem_out={:x}|in1={:x}|in2={:x}|sel_alu2={}".format(
                     b2d(cpu.pc),
                     inst,
                     asm.get(inst, "???"),
-                    b2d(cpu.dcache.io_cpu_req_bits_addr),
-                    b2d(cpu.dcache.addr),
-                    b2d(cpu.dcache.io_cpu_req_bits_satp_ppn),
-                    b2d(cpu.dcache.pte_ppn),
-                    b2d(cpu.dcache.state),
-                    # b2d(cpu.dcache.level),
-                    b2d(cpu.dcache.io_cpu_resp_bits_page_fault),
-                    b2d(cpu.csr.exception),
-                    # b2d(cpu.csr.mcause),
-                    b2d(cpu.csr.scause),
-                    b2d(cpu.csr.deleg2S),
-                    # b2d(cpu.dcache.trans_on),
-                    # b2d(cpu.dcache.io_cpu_resp_valid),
-                    b2d(cpu.dcache.io_wb_rdata),
-                    b2d(cpu.dcache.io_wb_wdata),
-                    b2d(cpu.dcache.io_wb_we),
-                    # b2d(cpu.csr.mscratch),
-                    # b2d(cpu.csr.sscratch),
                     b2d(rf["a0"]),
                     b2d(rf["a1"]),
+                    b2d(rf["a2"]),
                     b2d(rf["a3"]),
                     b2d(rf["a4"]),
-                    b2d(rf["a5"]),
-                    b2d(rf["a7"]),
-                    b2d(rf["t0"]),
+                    b2d(cpu.mem_addr),
+                    b2d(cpu.mem_out),
+                    b2d(cpu.alu.io_in1),
+                    b2d(cpu.alu.io_in2),
+                    b2d(cpu.sel_alu2),
                 )
             )
         else:

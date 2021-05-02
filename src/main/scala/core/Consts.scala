@@ -34,11 +34,12 @@ object Consts {
   val MEM_BU    = 3.U
   val MEM_HU    = 4.U
 
-  val SZ_RF_WDATA  = 2
+  val SZ_RF_WDATA  = 3
   val RF_WDATA_ALU = 0.U
   val RF_WDATA_MEM = 1.U
   val RF_WDATA_PC4 = 2.U
   val RF_WDATA_CSR = 3.U
+  val RF_WDATA_SCW = 4.U
 
   val SZ_CSR_CMD = 3
   val CSR_CMD_N  = 0.U
