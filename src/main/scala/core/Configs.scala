@@ -13,14 +13,14 @@ abstract class CoreBundle(implicit val c: Config) extends Bundle with HasCoreCon
 
 case object XLEN      extends Field[Int]
 case object DRAM_BASE extends Field[UInt]
-case object CacheType extends Field[String](default = "None") // 'None 多好，可惜deprecate了
+case object CacheType extends Field[String]("None") // 'None 多好，可惜deprecate了
+case object ExtA      extends Field[Boolean](false)
+case object ExtZicsr  extends Field[Boolean](true)
 
 class NaiveConfig
-    extends Config((site, here, up) => {
+    extends Config((_, _, _) => {
       case XLEN      => 32
       case DRAM_BASE => "h80000000".U
     })
-class WithCacheDirectMap
-    extends Config((site, here, up) => { case CacheType =>
-      "DirectMapping"
-    })
+class WithCacheDirectMap extends Config((_, _, _) => { case CacheType => "DirectMapping" })
+class WithExtA           extends Config((_, _, _) => { case ExtA => true })

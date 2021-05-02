@@ -68,7 +68,7 @@ class Naive(implicit c: Config) extends CoreModule {
   implicit def uint2BitPat(x: UInt): BitPat  = BitPat(x)
   def unimpl(legal: BitPat = Y): Seq[BitPat] = Seq(legal, FMT_WIP, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_N, N, N)
 
-  val table: Seq[(BitPat, Seq[BitPat])] = Seq(
+  val tableI: Seq[(BitPat, Seq[BitPat])]     = Seq(
     BEQ        -> Seq(Y, FMT_SB, Y, N, N, FN_SEQ, N, X, MEM_B, CSR_CMD_N, N, N),
     BNE        -> Seq(Y, FMT_SB, Y, N, N, FN_SNE, N, X, MEM_B, CSR_CMD_N, N, N),
     BLT        -> Seq(Y, FMT_SB, Y, N, N, FN_SLT, N, X, MEM_B, CSR_CMD_N, N, N),
@@ -108,17 +108,6 @@ class Naive(implicit c: Config) extends CoreModule {
     SW         -> Seq(Y, FMT_S, N, N, N, FN_ADD, Y, Y, MEM_W, CSR_CMD_N, N, N),
     FENCE      -> unimpl(),
     FENCE_I    -> unimpl(),
-    AMOADD_W   -> Seq(Y, FMT_R, N, N, N, FN_ADD, Y, N, MEM_W, CSR_CMD_N, Y, N),
-    AMOXOR_W   -> Seq(Y, FMT_R, N, N, N, FN_XOR, Y, N, MEM_W, CSR_CMD_N, Y, N),
-    AMOOR_W    -> Seq(Y, FMT_R, N, N, N, FN_OR, Y, N, MEM_W, CSR_CMD_N, Y, N),
-    AMOAND_W   -> Seq(Y, FMT_R, N, N, N, FN_AND, Y, N, MEM_W, CSR_CMD_N, Y, N),
-    AMOMIN_W   -> Seq(Y, FMT_R, N, N, N, FN_SLT, Y, N, MEM_W, CSR_CMD_N, Y, N),
-    AMOMAX_W   -> Seq(Y, FMT_R, N, N, N, FN_SLT, Y, N, MEM_W, CSR_CMD_N, Y, N),
-    AMOMINU_W  -> Seq(Y, FMT_R, N, N, N, FN_SLTU, Y, N, MEM_W, CSR_CMD_N, Y, N),
-    AMOMAXU_W  -> Seq(Y, FMT_R, N, N, N, FN_SLTU, Y, N, MEM_W, CSR_CMD_N, Y, N),
-    AMOSWAP_W  -> Seq(Y, FMT_R, N, N, N, FN_X, Y, N, MEM_W, CSR_CMD_N, Y, N),
-    LR_W       -> Seq(Y, FMT_R, N, N, N, FN_ADD, Y, N, MEM_W, CSR_CMD_N, N, Y),
-    SC_W       -> Seq(Y, FMT_R, N, N, N, FN_ADD, Y, Y, MEM_W, CSR_CMD_N, N, Y),
     ECALL      -> Seq(Y, FMT_IC, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_P, N, N),
     EBREAK     -> Seq(Y, FMT_IC, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_P, N, N),
     URET       -> unimpl(),
@@ -127,13 +116,30 @@ class Naive(implicit c: Config) extends CoreModule {
     DRET       -> unimpl(),
     SFENCE_VMA -> unimpl(),
     WFI        -> unimpl(),
-    CSRRW      -> Seq(Y, FMT_IC, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_W, N, N),
-    CSRRS      -> Seq(Y, FMT_IC, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_S, N, N),
-    CSRRC      -> Seq(Y, FMT_IC, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_C, N, N),
-    CSRRWI     -> Seq(Y, FMT_ICI, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_W, N, N),
-    CSRRSI     -> Seq(Y, FMT_ICI, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_S, N, N),
-    CSRRCI     -> Seq(Y, FMT_ICI, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_C, N, N),
   )
+  val tableZicsr: Seq[(BitPat, Seq[BitPat])] = Seq(
+    CSRRW  -> Seq(Y, FMT_IC, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_W, N, N),
+    CSRRS  -> Seq(Y, FMT_IC, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_S, N, N),
+    CSRRC  -> Seq(Y, FMT_IC, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_C, N, N),
+    CSRRWI -> Seq(Y, FMT_ICI, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_W, N, N),
+    CSRRSI -> Seq(Y, FMT_ICI, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_S, N, N),
+    CSRRCI -> Seq(Y, FMT_ICI, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_C, N, N),
+  )
+  val tableA: Seq[(BitPat, Seq[BitPat])]     = Seq(
+    AMOADD_W  -> Seq(Y, FMT_R, N, N, N, FN_ADD, Y, N, MEM_W, CSR_CMD_N, Y, N),
+    AMOXOR_W  -> Seq(Y, FMT_R, N, N, N, FN_XOR, Y, N, MEM_W, CSR_CMD_N, Y, N),
+    AMOOR_W   -> Seq(Y, FMT_R, N, N, N, FN_OR, Y, N, MEM_W, CSR_CMD_N, Y, N),
+    AMOAND_W  -> Seq(Y, FMT_R, N, N, N, FN_AND, Y, N, MEM_W, CSR_CMD_N, Y, N),
+    AMOMIN_W  -> Seq(Y, FMT_R, N, N, N, FN_SLT, Y, N, MEM_W, CSR_CMD_N, Y, N),
+    AMOMAX_W  -> Seq(Y, FMT_R, N, N, N, FN_SLT, Y, N, MEM_W, CSR_CMD_N, Y, N),
+    AMOMINU_W -> Seq(Y, FMT_R, N, N, N, FN_SLTU, Y, N, MEM_W, CSR_CMD_N, Y, N),
+    AMOMAXU_W -> Seq(Y, FMT_R, N, N, N, FN_SLTU, Y, N, MEM_W, CSR_CMD_N, Y, N),
+    AMOSWAP_W -> Seq(Y, FMT_R, N, N, N, FN_X, Y, N, MEM_W, CSR_CMD_N, Y, N),
+    LR_W      -> Seq(Y, FMT_R, N, N, N, FN_ADD, Y, N, MEM_W, CSR_CMD_N, N, Y),
+    SC_W      -> Seq(Y, FMT_R, N, N, N, FN_ADD, Y, Y, MEM_W, CSR_CMD_N, N, Y),
+  )
+  val table: Seq[(BitPat, Seq[BitPat])]      =
+    tableI ++ (if (c(ExtZicsr)) tableZicsr else Seq()) ++ (if (c(ExtA)) tableA else Seq())
 
   val default      = unimpl(N)
   val firstDecoder = DecodeLogic(inst, default, table)

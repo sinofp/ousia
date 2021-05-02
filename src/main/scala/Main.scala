@@ -18,7 +18,6 @@ object Main extends App {
   val options = parse(Map(), args.toList)
   println(s"[info] output to ${options("dir")}")
 
-//  implicit val c = new Config(new WithCacheDirectMap ++ new NaiveConfig)
-  implicit val c = new Config(new NaiveConfig)
+  implicit val c: Config = new Config(new WithExtA ++ new NaiveConfig)
   new ChiselStage execute (Array("--target-dir", options("dir")), Seq(ChiselGeneratorAnnotation(() => new Naive)))
 }

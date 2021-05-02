@@ -50,7 +50,8 @@ class CSR(implicit c: Config) extends CoreModule {
   val mhartid   = 0.U(mxLen.W)
   // Machine Trap Setup
   val mstatus   = RegInit(0.U.asTypeOf(new MStatus))
-  val misa      = 1.U(2.W) ## 0.U((mxLen - 28).W) ## "I".map(_ - 'A').map(1 << _).reduce(_ | _).U(26.W)
+  val misa      =
+    1.U(2.W) ## 0.U((mxLen - 28).W) ## ("I" + (if (c(ExtA)) "A" else "")).map(_ - 'A').map(1 << _).reduce(_ | _).U(26.W)
   val medeleg   = Reg(UInt(mxLen.W))
   val mideleg   = Reg(UInt(mxLen.W))
   val mie       = Reg(new Mie(mxLen))
