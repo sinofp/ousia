@@ -15,6 +15,7 @@ case object XLEN      extends Field[Int]
 case object DRAM_BASE extends Field[UInt]
 case object CacheType extends Field[String]("None") // 'None 多好，可惜deprecate了
 case object ExtA      extends Field[Boolean](false)
+case object ExtM      extends Field[Boolean](false)
 case object ExtZicsr  extends Field[Boolean](true)
 
 class NaiveConfig
@@ -24,3 +25,4 @@ class NaiveConfig
     })
 class WithCacheDirectMap extends Config((_, _, _) => { case CacheType => "DirectMapping" })
 class WithExtA           extends Config((_, _, _) => { case ExtA => true })
+class WithExtM           extends Config((_, _, _) => { case ExtM => true })

@@ -14,7 +14,9 @@ TEST_INSTS = rv32mi-p-breakpoint  rv32mi-p-csr  rv32mi-p-illegal  rv32mi-p-ma_ad
 	     rv32ui-p-sltiu  rv32ui-p-sltu  rv32ui-p-sra  rv32ui-p-srai \
 	     rv32ui-p-srl  rv32ui-p-srli  rv32ui-p-sub  rv32ui-p-sw \
 	     rv32ui-p-xor  rv32ui-p-xori  rv32ui-p-fence_i \
-             rv32ua-p-amoadd_w rv32ua-p-amoand_w rv32ua-p-amomaxu_w rv32ua-p-amomax_w \
+	     rv32um-p-mul rv32um-p-mulh rv32um-p-mulhu rv32um-p-mulhsu \
+	     rv32um-p-div rv32um-p-divu rv32um-p-rem rv32um-p-remu \
+	     rv32ua-p-amoadd_w rv32ua-p-amoand_w rv32ua-p-amomaxu_w rv32ua-p-amomax_w \
 	     rv32ua-p-amominu_w rv32ua-p-amomin_w rv32ua-p-amoor_w rv32ua-p-amoswap_w \
 	     rv32ua-p-amoxor_w  rv32ua-p-lrsc \
 	     rv32ui-v-add rv32ui-v-addi rv32ui-v-and rv32ui-v-andi \
@@ -27,6 +29,8 @@ TEST_INSTS = rv32mi-p-breakpoint  rv32mi-p-csr  rv32mi-p-illegal  rv32mi-p-ma_ad
 	     rv32ui-v-slti rv32ui-v-sltiu rv32ui-v-sltu rv32ui-v-sra \
 	     rv32ui-v-srai rv32ui-v-srl rv32ui-v-srli rv32ui-v-sub \
 	     rv32ui-v-sw rv32ui-v-xor rv32ui-v-xori rv32ui-v-beq \
+	     rv32um-v-mul rv32um-v-mulh rv32um-v-mulhu rv32um-v-mulhsu \
+	     rv32um-v-div rv32um-v-divu rv32um-v-rem rv32um-v-remu \
 	     rv32ua-v-amoadd_w rv32ua-v-amoand_w rv32ua-v-amomaxu_w rv32ua-v-amomax_w \
 	     rv32ua-v-amominu_w rv32ua-v-amomin_w rv32ua-v-amoor_w rv32ua-v-amoswap_w \
 	     rv32ua-v-amoxor_w rv32ua-v-lrsc # rv32mi-p-scall rv32ui-v-fence_i

@@ -6,6 +6,7 @@ import chisel3.util._
 import Consts._
 import Instructions._
 import ALU._
+import Util._
 
 class Naive(implicit c: Config) extends CoreModule {
   val io = IO(new Bundle {
@@ -63,83 +64,96 @@ class Naive(implicit c: Config) extends CoreModule {
     val csr_cmd = UInt(SZ_CSR_CMD.W)
     val amo     = Bool()
     val lrsc    = Bool()
+    val mul_div = Bool()
   }
 
   implicit def uint2BitPat(x: UInt): BitPat  = BitPat(x)
-  def unimpl(legal: BitPat = Y): Seq[BitPat] = Seq(legal, FMT_WIP, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_N, N, N)
+  def unimpl(legal: BitPat = Y): Seq[BitPat] = Seq(legal, FMT_WIP, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_N, N, N, N)
 
   val tableI: Seq[(BitPat, Seq[BitPat])]     = Seq(
-    BEQ        -> Seq(Y, FMT_SB, Y, N, N, FN_SEQ, N, X, MEM_B, CSR_CMD_N, N, N),
-    BNE        -> Seq(Y, FMT_SB, Y, N, N, FN_SNE, N, X, MEM_B, CSR_CMD_N, N, N),
-    BLT        -> Seq(Y, FMT_SB, Y, N, N, FN_SLT, N, X, MEM_B, CSR_CMD_N, N, N),
-    BGE        -> Seq(Y, FMT_SB, Y, N, N, FN_SGE, N, X, MEM_B, CSR_CMD_N, N, N),
-    BLTU       -> Seq(Y, FMT_SB, Y, N, N, FN_SLTU, N, X, MEM_B, CSR_CMD_N, N, N),
-    BGEU       -> Seq(Y, FMT_SB, Y, N, N, FN_SGEU, N, X, MEM_B, CSR_CMD_N, N, N),
-    JALR       -> Seq(Y, FMT_I, N, Y, N, FN_ADD, N, X, MEM_B, CSR_CMD_N, N, N),
-    JAL        -> Seq(Y, FMT_UJ, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_N, N, N),
-    LUI        -> Seq(Y, FMT_U, N, N, Y, FN_ADD, N, X, MEM_B, CSR_CMD_N, N, N),
-    AUIPC      -> Seq(Y, FMT_U, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_N, N, N),
-    ADDI       -> Seq(Y, FMT_I, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_N, N, N),
-    SLLI       -> Seq(Y, FMT_I, N, N, N, FN_SL, N, X, MEM_B, CSR_CMD_N, N, N),
-    SLTI       -> Seq(Y, FMT_I, N, N, N, FN_SLT, N, X, MEM_B, CSR_CMD_N, N, N),
-    SLTIU      -> Seq(Y, FMT_I, N, N, N, FN_SLTU, N, X, MEM_B, CSR_CMD_N, N, N),
-    XORI       -> Seq(Y, FMT_I, N, N, N, FN_XOR, N, X, MEM_B, CSR_CMD_N, N, N),
-    SRLI       -> Seq(Y, FMT_I, N, N, N, FN_SR, N, X, MEM_B, CSR_CMD_N, N, N),
-    SRAI       -> Seq(Y, FMT_I, N, N, N, FN_SRA, N, X, MEM_B, CSR_CMD_N, N, N),
-    ORI        -> Seq(Y, FMT_I, N, N, N, FN_OR, N, X, MEM_B, CSR_CMD_N, N, N),
-    ANDI       -> Seq(Y, FMT_I, N, N, N, FN_AND, N, X, MEM_B, CSR_CMD_N, N, N),
-    ADD        -> Seq(Y, FMT_R, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_N, N, N),
-    SUB        -> Seq(Y, FMT_R, N, N, N, FN_SUB, N, X, MEM_B, CSR_CMD_N, N, N),
-    SLL        -> Seq(Y, FMT_R, N, N, N, FN_SL, N, X, MEM_B, CSR_CMD_N, N, N),
-    SLT        -> Seq(Y, FMT_R, N, N, N, FN_SLT, N, X, MEM_B, CSR_CMD_N, N, N),
-    SLTU       -> Seq(Y, FMT_R, N, N, N, FN_SLTU, N, X, MEM_B, CSR_CMD_N, N, N),
-    XOR        -> Seq(Y, FMT_R, N, N, N, FN_XOR, N, X, MEM_B, CSR_CMD_N, N, N),
-    SRL        -> Seq(Y, FMT_R, N, N, N, FN_SR, N, X, MEM_B, CSR_CMD_N, N, N),
-    SRA        -> Seq(Y, FMT_R, N, N, N, FN_SRA, N, X, MEM_B, CSR_CMD_N, N, N),
-    OR         -> Seq(Y, FMT_R, N, N, N, FN_OR, N, X, MEM_B, CSR_CMD_N, N, N),
-    AND        -> Seq(Y, FMT_R, N, N, N, FN_AND, N, X, MEM_B, CSR_CMD_N, N, N),
-    LB         -> Seq(Y, FMT_I, N, N, N, FN_ADD, Y, N, MEM_B, CSR_CMD_N, N, N),
-    LH         -> Seq(Y, FMT_I, N, N, N, FN_ADD, Y, N, MEM_H, CSR_CMD_N, N, N),
-    LW         -> Seq(Y, FMT_I, N, N, N, FN_ADD, Y, N, MEM_W, CSR_CMD_N, N, N),
-    LBU        -> Seq(Y, FMT_I, N, N, N, FN_ADD, Y, N, MEM_BU, CSR_CMD_N, N, N),
-    LHU        -> Seq(Y, FMT_I, N, N, N, FN_ADD, Y, N, MEM_HU, CSR_CMD_N, N, N),
-    SB         -> Seq(Y, FMT_S, N, N, N, FN_ADD, Y, Y, MEM_B, CSR_CMD_N, N, N),
-    SH         -> Seq(Y, FMT_S, N, N, N, FN_ADD, Y, Y, MEM_H, CSR_CMD_N, N, N),
-    SW         -> Seq(Y, FMT_S, N, N, N, FN_ADD, Y, Y, MEM_W, CSR_CMD_N, N, N),
+    BEQ        -> Seq(Y, FMT_SB, Y, N, N, FN_SEQ, N, X, MEM_B, CSR_CMD_N, N, N, N),
+    BNE        -> Seq(Y, FMT_SB, Y, N, N, FN_SNE, N, X, MEM_B, CSR_CMD_N, N, N, N),
+    BLT        -> Seq(Y, FMT_SB, Y, N, N, FN_SLT, N, X, MEM_B, CSR_CMD_N, N, N, N),
+    BGE        -> Seq(Y, FMT_SB, Y, N, N, FN_SGE, N, X, MEM_B, CSR_CMD_N, N, N, N),
+    BLTU       -> Seq(Y, FMT_SB, Y, N, N, FN_SLTU, N, X, MEM_B, CSR_CMD_N, N, N, N),
+    BGEU       -> Seq(Y, FMT_SB, Y, N, N, FN_SGEU, N, X, MEM_B, CSR_CMD_N, N, N, N),
+    JALR       -> Seq(Y, FMT_I, N, Y, N, FN_ADD, N, X, MEM_B, CSR_CMD_N, N, N, N),
+    JAL        -> Seq(Y, FMT_UJ, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_N, N, N, N),
+    LUI        -> Seq(Y, FMT_U, N, N, Y, FN_ADD, N, X, MEM_B, CSR_CMD_N, N, N, N),
+    AUIPC      -> Seq(Y, FMT_U, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_N, N, N, N),
+    ADDI       -> Seq(Y, FMT_I, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_N, N, N, N),
+    SLLI       -> Seq(Y, FMT_I, N, N, N, FN_SL, N, X, MEM_B, CSR_CMD_N, N, N, N),
+    SLTI       -> Seq(Y, FMT_I, N, N, N, FN_SLT, N, X, MEM_B, CSR_CMD_N, N, N, N),
+    SLTIU      -> Seq(Y, FMT_I, N, N, N, FN_SLTU, N, X, MEM_B, CSR_CMD_N, N, N, N),
+    XORI       -> Seq(Y, FMT_I, N, N, N, FN_XOR, N, X, MEM_B, CSR_CMD_N, N, N, N),
+    SRLI       -> Seq(Y, FMT_I, N, N, N, FN_SR, N, X, MEM_B, CSR_CMD_N, N, N, N),
+    SRAI       -> Seq(Y, FMT_I, N, N, N, FN_SRA, N, X, MEM_B, CSR_CMD_N, N, N, N),
+    ORI        -> Seq(Y, FMT_I, N, N, N, FN_OR, N, X, MEM_B, CSR_CMD_N, N, N, N),
+    ANDI       -> Seq(Y, FMT_I, N, N, N, FN_AND, N, X, MEM_B, CSR_CMD_N, N, N, N),
+    ADD        -> Seq(Y, FMT_R, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_N, N, N, N),
+    SUB        -> Seq(Y, FMT_R, N, N, N, FN_SUB, N, X, MEM_B, CSR_CMD_N, N, N, N),
+    SLL        -> Seq(Y, FMT_R, N, N, N, FN_SL, N, X, MEM_B, CSR_CMD_N, N, N, N),
+    SLT        -> Seq(Y, FMT_R, N, N, N, FN_SLT, N, X, MEM_B, CSR_CMD_N, N, N, N),
+    SLTU       -> Seq(Y, FMT_R, N, N, N, FN_SLTU, N, X, MEM_B, CSR_CMD_N, N, N, N),
+    XOR        -> Seq(Y, FMT_R, N, N, N, FN_XOR, N, X, MEM_B, CSR_CMD_N, N, N, N),
+    SRL        -> Seq(Y, FMT_R, N, N, N, FN_SR, N, X, MEM_B, CSR_CMD_N, N, N, N),
+    SRA        -> Seq(Y, FMT_R, N, N, N, FN_SRA, N, X, MEM_B, CSR_CMD_N, N, N, N),
+    OR         -> Seq(Y, FMT_R, N, N, N, FN_OR, N, X, MEM_B, CSR_CMD_N, N, N, N),
+    AND        -> Seq(Y, FMT_R, N, N, N, FN_AND, N, X, MEM_B, CSR_CMD_N, N, N, N),
+    LB         -> Seq(Y, FMT_I, N, N, N, FN_ADD, Y, N, MEM_B, CSR_CMD_N, N, N, N),
+    LH         -> Seq(Y, FMT_I, N, N, N, FN_ADD, Y, N, MEM_H, CSR_CMD_N, N, N, N),
+    LW         -> Seq(Y, FMT_I, N, N, N, FN_ADD, Y, N, MEM_W, CSR_CMD_N, N, N, N),
+    LBU        -> Seq(Y, FMT_I, N, N, N, FN_ADD, Y, N, MEM_BU, CSR_CMD_N, N, N, N),
+    LHU        -> Seq(Y, FMT_I, N, N, N, FN_ADD, Y, N, MEM_HU, CSR_CMD_N, N, N, N),
+    SB         -> Seq(Y, FMT_S, N, N, N, FN_ADD, Y, Y, MEM_B, CSR_CMD_N, N, N, N),
+    SH         -> Seq(Y, FMT_S, N, N, N, FN_ADD, Y, Y, MEM_H, CSR_CMD_N, N, N, N),
+    SW         -> Seq(Y, FMT_S, N, N, N, FN_ADD, Y, Y, MEM_W, CSR_CMD_N, N, N, N),
     FENCE      -> unimpl(),
     FENCE_I    -> unimpl(),
-    ECALL      -> Seq(Y, FMT_IC, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_P, N, N),
-    EBREAK     -> Seq(Y, FMT_IC, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_P, N, N),
+    ECALL      -> Seq(Y, FMT_IC, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_P, N, N, N),
+    EBREAK     -> Seq(Y, FMT_IC, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_P, N, N, N),
     URET       -> unimpl(),
-    SRET       -> Seq(Y, FMT_IC, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_P, N, N),
-    MRET       -> Seq(Y, FMT_IC, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_P, N, N),
+    SRET       -> Seq(Y, FMT_IC, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_P, N, N, N),
+    MRET       -> Seq(Y, FMT_IC, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_P, N, N, N),
     DRET       -> unimpl(),
     SFENCE_VMA -> unimpl(),
     WFI        -> unimpl(),
   )
   val tableZicsr: Seq[(BitPat, Seq[BitPat])] = Seq(
-    CSRRW  -> Seq(Y, FMT_IC, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_W, N, N),
-    CSRRS  -> Seq(Y, FMT_IC, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_S, N, N),
-    CSRRC  -> Seq(Y, FMT_IC, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_C, N, N),
-    CSRRWI -> Seq(Y, FMT_ICI, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_W, N, N),
-    CSRRSI -> Seq(Y, FMT_ICI, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_S, N, N),
-    CSRRCI -> Seq(Y, FMT_ICI, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_C, N, N),
+    CSRRW  -> Seq(Y, FMT_IC, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_W, N, N, N),
+    CSRRS  -> Seq(Y, FMT_IC, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_S, N, N, N),
+    CSRRC  -> Seq(Y, FMT_IC, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_C, N, N, N),
+    CSRRWI -> Seq(Y, FMT_ICI, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_W, N, N, N),
+    CSRRSI -> Seq(Y, FMT_ICI, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_S, N, N, N),
+    CSRRCI -> Seq(Y, FMT_ICI, N, N, N, FN_ADD, N, X, MEM_B, CSR_CMD_C, N, N, N),
   )
   val tableA: Seq[(BitPat, Seq[BitPat])]     = Seq(
-    AMOADD_W  -> Seq(Y, FMT_R, N, N, N, FN_ADD, Y, N, MEM_W, CSR_CMD_N, Y, N),
-    AMOXOR_W  -> Seq(Y, FMT_R, N, N, N, FN_XOR, Y, N, MEM_W, CSR_CMD_N, Y, N),
-    AMOOR_W   -> Seq(Y, FMT_R, N, N, N, FN_OR, Y, N, MEM_W, CSR_CMD_N, Y, N),
-    AMOAND_W  -> Seq(Y, FMT_R, N, N, N, FN_AND, Y, N, MEM_W, CSR_CMD_N, Y, N),
-    AMOMIN_W  -> Seq(Y, FMT_R, N, N, N, FN_SLT, Y, N, MEM_W, CSR_CMD_N, Y, N),
-    AMOMAX_W  -> Seq(Y, FMT_R, N, N, N, FN_SLT, Y, N, MEM_W, CSR_CMD_N, Y, N),
-    AMOMINU_W -> Seq(Y, FMT_R, N, N, N, FN_SLTU, Y, N, MEM_W, CSR_CMD_N, Y, N),
-    AMOMAXU_W -> Seq(Y, FMT_R, N, N, N, FN_SLTU, Y, N, MEM_W, CSR_CMD_N, Y, N),
-    AMOSWAP_W -> Seq(Y, FMT_R, N, N, N, FN_X, Y, N, MEM_W, CSR_CMD_N, Y, N),
-    LR_W      -> Seq(Y, FMT_R, N, N, N, FN_ADD, Y, N, MEM_W, CSR_CMD_N, N, Y),
-    SC_W      -> Seq(Y, FMT_R, N, N, N, FN_ADD, Y, Y, MEM_W, CSR_CMD_N, N, Y),
+    AMOADD_W  -> Seq(Y, FMT_R, N, N, N, FN_ADD, Y, N, MEM_W, CSR_CMD_N, Y, N, N),
+    AMOXOR_W  -> Seq(Y, FMT_R, N, N, N, FN_XOR, Y, N, MEM_W, CSR_CMD_N, Y, N, N),
+    AMOOR_W   -> Seq(Y, FMT_R, N, N, N, FN_OR, Y, N, MEM_W, CSR_CMD_N, Y, N, N),
+    AMOAND_W  -> Seq(Y, FMT_R, N, N, N, FN_AND, Y, N, MEM_W, CSR_CMD_N, Y, N, N),
+    AMOMIN_W  -> Seq(Y, FMT_R, N, N, N, FN_SLT, Y, N, MEM_W, CSR_CMD_N, Y, N, N),
+    AMOMAX_W  -> Seq(Y, FMT_R, N, N, N, FN_SLT, Y, N, MEM_W, CSR_CMD_N, Y, N, N),
+    AMOMINU_W -> Seq(Y, FMT_R, N, N, N, FN_SLTU, Y, N, MEM_W, CSR_CMD_N, Y, N, N),
+    AMOMAXU_W -> Seq(Y, FMT_R, N, N, N, FN_SLTU, Y, N, MEM_W, CSR_CMD_N, Y, N, N),
+    AMOSWAP_W -> Seq(Y, FMT_R, N, N, N, FN_X, Y, N, MEM_W, CSR_CMD_N, Y, N, N),
+    LR_W      -> Seq(Y, FMT_R, N, N, N, FN_ADD, Y, N, MEM_W, CSR_CMD_N, N, Y, N),
+    SC_W      -> Seq(Y, FMT_R, N, N, N, FN_ADD, Y, Y, MEM_W, CSR_CMD_N, N, Y, N),
   )
-  val table: Seq[(BitPat, Seq[BitPat])]      =
-    tableI ++ (if (c(ExtZicsr)) tableZicsr else Seq()) ++ (if (c(ExtA)) tableA else Seq())
+  val tableM: Seq[(BitPat, Seq[BitPat])]     = Seq(
+    MUL    -> Seq(Y, FMT_R, N, N, N, FN_MUL, N, X, MEM_B, CSR_CMD_N, N, N, Y),
+    MULH   -> Seq(Y, FMT_R, N, N, N, FN_MULH, N, X, MEM_B, CSR_CMD_N, N, N, Y),
+    MULHSU -> Seq(Y, FMT_R, N, N, N, FN_MULHSU, N, X, MEM_B, CSR_CMD_N, N, N, Y),
+    MULHU  -> Seq(Y, FMT_R, N, N, N, FN_MULHU, N, X, MEM_B, CSR_CMD_N, N, N, Y),
+    DIV    -> Seq(Y, FMT_R, N, N, N, FN_DIV, N, X, MEM_B, CSR_CMD_N, N, N, Y),
+    DIVU   -> Seq(Y, FMT_R, N, N, N, FN_DIVU, N, X, MEM_B, CSR_CMD_N, N, N, Y),
+    REM    -> Seq(Y, FMT_R, N, N, N, FN_REM, N, X, MEM_B, CSR_CMD_N, N, N, Y),
+    REMU   -> Seq(Y, FMT_R, N, N, N, FN_REMU, N, X, MEM_B, CSR_CMD_N, N, N, Y),
+  )
+  val table: Seq[(BitPat, Seq[BitPat])]      = tableI ++
+    (if (c(ExtZicsr)) tableZicsr else Seq()) ++
+    (if (c(ExtA)) tableA else Seq()) ++
+    (if (c(ExtM)) tableM else Seq())
 
   val default      = unimpl(N)
   val firstDecoder = DecodeLogic(inst, default, table)
@@ -160,8 +174,6 @@ class Naive(implicit c: Config) extends CoreModule {
   Rrs1 := rf.io.rdata(0)
   val Rrs2 = rf.io.rdata(1)
 
-  def ZXT(x: UInt, len: Int = 32) = 0.U((len - x.getWidth).W) ## x
-  def SXT(x: UInt, len: Int = 32) = Fill(len - x.getWidth, x(x.getWidth - 1)) ## x
   imm := Mux(
     cs.csr_cmd === CSR_CMD_N,
     MuxLookup(
@@ -217,6 +229,12 @@ class Naive(implicit c: Config) extends CoreModule {
   alu.io.fn        := Mux(cs.amo, FN_ADD, cs.alu_fn)
   alu.io.dw        := false.B
   alu.io.adder_out := DontCare
+  val mulDiv = Module(new MulDiv)
+  mulDiv.io.start := cs.mul_div && exec_start
+  mulDiv.io.in1   := Rrs1
+  mulDiv.io.in2   := Rrs2
+  mulDiv.io.fn    := cs.alu_fn
+  val aluOut = Mux(cs.mul_div, mulDiv.io.out.bits, alu.io.out)
 
   // rocket core不知道为啥在mem阶段判断br_target，因为EX已经很复杂了？但我看13年的图，判断是在EX
   br_taken  := alu.io.cmp_out && cs.fmt === FMT_SB
@@ -238,7 +256,7 @@ class Naive(implicit c: Config) extends CoreModule {
   dcache.io.cpu.abort := xcpt
   val dcache_req = dcache.io.cpu.req
   // 有时会出现lw xx, ?(xx)这样同一个寄存器即生成地址又接受数据的情况。因为现在等待访存结束是重复执行那条访存指令，所以同一条指令，地址会变
-  mem_addr             := Mux(exec_start, alu.io.out, RegEnable(alu.io.out, exec_start))
+  mem_addr             := Mux(exec_start, aluOut, RegEnable(aluOut, exec_start))
   dcache_req.bits.satp := satp
   dcache_req.bits.PRV  := PRV
   dcache_req.bits.addr := mem_addr(31, 2) ## 0.U(2.W)
@@ -317,7 +335,7 @@ class Naive(implicit c: Config) extends CoreModule {
   csr.io.cmd             := cs.csr_cmd
   csr.io.rdIsX0          := !rd.orR
   csr.io.rs1IsX0         := !rs1.orR                                         // 这个不只代表rs1不是x0，也意味着CSR??I的uimm不是0
-  csr.io.in              := alu.io.out
+  csr.io.in              := aluOut
   csr.io.jbr             := jbr
   csr.io.jbr_target      := jbr_target
   xcpt                   := csr.io.xcpt
@@ -332,7 +350,7 @@ class Naive(implicit c: Config) extends CoreModule {
   rf.io.waddr := rd
   rf.io.wdata := MuxLookup(
     sel_rf_wdata,
-    alu.io.out,
+    aluOut,
     Seq(RF_WDATA_MEM -> mem_out, RF_WDATA_PC4 -> pcp4, RF_WDATA_CSR -> csr.io.out, RF_WDATA_SCW -> ZXT(!sc_succ)),
   )
 
@@ -372,7 +390,11 @@ class Naive(implicit c: Config) extends CoreModule {
       }.elsewhen(jbr) {
         go_fetch(jbr_target)
       }.elsewhen(
-        !cs.mem_en || !cs.amo && dcache_resp.valid || cs.amo && mem_valid_2 && dcache_resp.valid || is_sc && !sc_succ
+        Mux(
+          cs.mul_div,
+          mulDiv.io.out.valid,
+          !cs.mem_en || !cs.amo && dcache_resp.valid || cs.amo && mem_valid_2 && dcache_resp.valid || is_sc && !sc_succ,
+        )
       ) {
         // 不用memory，或者用，但是已经用完了 -> commit
         go_fetch(pcp4)

@@ -6,6 +6,24 @@ from os import environ
 import re
 
 
+def print_status(cpu, commit):
+    inst = "{:08x}".format(b2d(cpu.inst))
+    print(
+        (">" if commit else " ")
+        + "pc = {:9x} ({}) {}|divisor={:x}|q={:x}|r={:x}|sub_out={:b}|busy={}|cnt={}".format(
+            b2d(cpu.pc),
+            inst,
+            asm.get(inst, "???"),
+            b2d(cpu.mulDiv.div.divisor),
+            b2d(cpu.mulDiv.div.quotient),
+            b2d(cpu.mulDiv.div.remainder),
+            b2d(cpu.mulDiv.div.sub_out),
+            b2d(cpu.mulDiv.div.busy),
+            b2d(cpu.mulDiv.div.cnt),
+        )
+    )
+
+
 def b2d(x):
     """binary to decimal"""
     return int(str(x.value), 2)
@@ -80,29 +98,12 @@ async def riscv_test(dut):
     cnt = 0
 
     while True:
-        # if True:
         if cpu.next_inst == 1:
             cnt = 0
-            inst = "{:08x}".format(b2d(cpu.inst))
-            pattern.append(inst)
-            print(
-                "pc = {:9x} ({}) {}|a0={:x}|a1={:x}|a2={:x}|a3={:x}|a4={:x}|mem_addr={:x}|mem_out={:x}|in1={:x}|in2={:x}|sel_alu2={}".format(
-                    b2d(cpu.pc),
-                    inst,
-                    asm.get(inst, "???"),
-                    b2d(rf["a0"]),
-                    b2d(rf["a1"]),
-                    b2d(rf["a2"]),
-                    b2d(rf["a3"]),
-                    b2d(rf["a4"]),
-                    b2d(cpu.mem_addr),
-                    b2d(cpu.mem_out),
-                    b2d(cpu.alu.io_in1),
-                    b2d(cpu.alu.io_in2),
-                    b2d(cpu.sel_alu2),
-                )
-            )
+            pattern.append("{:08x}".format(b2d(cpu.inst)))
+            print_status(cpu, True)
         else:
+            print_status(cpu, False)
             cnt += 1
             assert cnt != 100, "Stucked!"
         if pattern == pass_pattern:
