@@ -83,8 +83,8 @@ class Div(implicit c: Config) extends CoreModule {
 
   val quotient  = res(xLen - 1, 0)
   val remainder = res(xLen * 2, xLen + 1)
-  dontTouch(quotient) // trace
-  dontTouch(remainder)
+//  dontTouch(quotient) // trace
+//  dontTouch(remainder)
 
   io.out.valid := !busy && busy2 || division_by_zero // 1-cycle ready
   io.out.bits  := Mux(

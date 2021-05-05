@@ -10,16 +10,10 @@ def print_status(cpu, commit):
     inst = "{:08x}".format(b2d(cpu.inst))
     print(
         (">" if commit else " ")
-        + "pc = {:9x} ({}) {}|divisor={:x}|q={:x}|r={:x}|sub_out={:b}|busy={}|cnt={}".format(
+        + "pc = {:9x} ({}) {}|".format(
             b2d(cpu.pc),
             inst,
             asm.get(inst, "???"),
-            b2d(cpu.mulDiv.div.divisor),
-            b2d(cpu.mulDiv.div.quotient),
-            b2d(cpu.mulDiv.div.remainder),
-            b2d(cpu.mulDiv.div.sub_out),
-            b2d(cpu.mulDiv.div.busy),
-            b2d(cpu.mulDiv.div.cnt),
         )
     )
 

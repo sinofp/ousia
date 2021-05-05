@@ -1,23 +1,30 @@
-import chipsalliance.rocketchip.config.Config
+import chipsalliance.rocketchip.config.{Config, Parameters}
 import chisel3.stage.{ChiselGeneratorAnnotation, ChiselStage}
 import core._
 
 import scala.annotation.{nowarn, tailrec}
 
-object Main extends App {
-  type OptionMap = Map[String, String]
+sealed trait CmdOption
+case object GenType   extends CmdOption
+case object OutputDir extends CmdOption
 
-  @nowarn
+object Main extends App {
+  type CmdOptionMap = Map[CmdOption, String]
+
   @tailrec
-  def parse(map: OptionMap, list: List[String]): OptionMap =
+  @nowarn("msg=match may not be exhaustive")
+  def nextCmdOption(map: CmdOptionMap, list: List[String]): CmdOptionMap =
     list match {
-      case Nil                                    => Map("dir" -> ".") ++ map
-      case ("-d" | "--target-dir") :: dir :: tail => parse(map ++ Map("dir" -> dir), tail)
+      case Nil                                    => Map(GenType -> "full", OutputDir -> ".") ++ map
+      case ("-d" | "--target-dir") :: dir :: tail => nextCmdOption(map ++ Map(OutputDir -> dir), tail)
+      case ("-g" | "--gen") :: tpe :: tail        => nextCmdOption(map ++ Map(GenType -> tpe), tail)
     }
 
-  val options = parse(Map(), args.toList)
-  println(s"[info] output to ${options("dir")}")
+  val options = nextCmdOption(Map(), args.toList)
+  println(s"[info] output to ${options(OutputDir)}")
 
-  implicit val c: Config = new Config(new WithExtM ++ new WithExtA ++ new NaiveConfig)
-  new ChiselStage execute (Array("--target-dir", options("dir")), Seq(ChiselGeneratorAnnotation(() => new Naive)))
+  implicit val c: Config = new Config(
+    if (options(GenType) == "mini") Parameters.empty else new WithExtM ++ new WithExtA
+  )
+  new ChiselStage execute (Array("--target-dir", options(OutputDir)), Seq(ChiselGeneratorAnnotation(() => new Naive)))
 }

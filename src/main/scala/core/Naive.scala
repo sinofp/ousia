@@ -229,12 +229,17 @@ class Naive(implicit c: Config) extends CoreModule {
   alu.io.fn        := Mux(cs.amo, FN_ADD, cs.alu_fn)
   alu.io.dw        := false.B
   alu.io.adder_out := DontCare
-  val mulDiv = Module(new MulDiv)
-  mulDiv.io.start := cs.mul_div && exec_start
-  mulDiv.io.in1   := Rrs1
-  mulDiv.io.in2   := Rrs2
-  mulDiv.io.fn    := cs.alu_fn
-  val aluOut = Mux(cs.mul_div, mulDiv.io.out.bits, alu.io.out)
+
+  val (aluOut, mulDivValid) = {
+    if (c(ExtM)) {
+      val mulDiv = Module(new MulDiv)
+      mulDiv.io.start := cs.mul_div && exec_start
+      mulDiv.io.in1   := Rrs1
+      mulDiv.io.in2   := Rrs2
+      mulDiv.io.fn    := cs.alu_fn
+      (Mux(cs.mul_div, mulDiv.io.out.bits, alu.io.out), mulDiv.io.out.valid)
+    } else (alu.io.out, true.B)
+  }
 
   // rocket core不知道为啥在mem阶段判断br_target，因为EX已经很复杂了？但我看13年的图，判断是在EX
   br_taken  := alu.io.cmp_out && cs.fmt === FMT_SB
@@ -296,8 +301,7 @@ class Naive(implicit c: Config) extends CoreModule {
     )
   }
   // write
-  val amoAluOut  = Wire(UInt(xLen.W))
-  dcache_req.bits.we  := mem_store
+  dcache_req.bits.we := mem_store
   dcache_req.bits.sel := dcache_sel
   // sc xx, xx, (yy)会把xx的值写成成功与否，这时store回(yy)的xx值就不是以前的值了，这里把写入内存的R[rs2]固定一下
   val _wdataRrs2 = MuxLookup(
@@ -311,14 +315,18 @@ class Naive(implicit c: Config) extends CoreModule {
     ),
   )
   val wdataRrs2  = Mux(exec_start, _wdataRrs2, RegEnable(_wdataRrs2, exec_start))
-  dcache_req.bits.data := Mux(cs.amo, amoAluOut, wdataRrs2)
-  // amo
-  val amoAlu = Module(new AMOALU)
-  amoAlu.io.funct5 := inst(31, 27)
-  amoAlu.io.fn     := cs.alu_fn
-  amoAlu.io.in1    := mem_out
-  amoAlu.io.in2    := Rrs2
-  amoAluOut        := RegEnable(amoAlu.io.out, dcache_resp.valid)
+  dcache_req.bits.data := {
+    if (c(ExtA)) {
+      // amo
+      val amoAlu = Module(new AMOALU)
+      amoAlu.io.funct5 := inst(31, 27)
+      amoAlu.io.fn     := cs.alu_fn
+      amoAlu.io.in1    := mem_out
+      amoAlu.io.in2    := Rrs2
+      val amoAluOut = RegEnable(amoAlu.io.out, dcache_resp.valid)
+      Mux(cs.amo, amoAluOut, wdataRrs2)
+    } else wdataRrs2
+  }
 
   // WB
   val csr = Module(new CSR)
@@ -392,7 +400,7 @@ class Naive(implicit c: Config) extends CoreModule {
       }.elsewhen(
         Mux(
           cs.mul_div,
-          mulDiv.io.out.valid,
+          mulDivValid,
           !cs.mem_en || !cs.amo && dcache_resp.valid || cs.amo && mem_valid_2 && dcache_resp.valid || is_sc && !sc_succ,
         )
       ) {
