@@ -50,89 +50,48 @@ class CSR(implicit c: Config) extends CoreModule {
   val mhartid   = 0.U(mxLen.W)
   // Machine Trap Setup
   val mstatus   = RegInit(0.U.asTypeOf(new MStatus))
-  val misa      =
-    1.U(2.W) ## 0.U((mxLen - 28).W) ## ("I" + (if (c(ExtA)) "A" else "")).map(_ - 'A').map(1 << _).reduce(_ | _).U(26.W)
+  val misa      = Cat(
+    1.U(2.W),
+    0.U((mxLen - 28).W),
+    ("ISU" + (if (c(ExtA)) "A" else "") + (if (c(ExtM)) "M" else "")).map(_ - 'A').map(1 << _).reduce(_ | _).U(26.W),
+  )
   val medeleg   = Reg(UInt(mxLen.W))
   val mideleg   = Reg(UInt(mxLen.W))
   val mie       = Reg(new Mie(mxLen))
   val mtvec     = Reg(UInt(mxLen.W))
-  // mcounteren
+  // mcounteren todo
   // Machine Trap Handling
   val mscratch  = Reg(UInt(mxLen.W))
   val mepc      = Reg(UInt(mxLen.W))
   val mcause    = Reg(UInt(mxLen.W))
   val mtval     = Reg(UInt(mxLen.W))
   val mip       = RegInit(0.U.asTypeOf(new Mip(mxLen)))
+
+  // Supervisor Trap Setup
+  // sstatus, sie is subset of mstatus, mie
+  // s{e,i}deleg, scounteren todo
+  val stvec    = Reg(UInt(sxLen.W))
   // Supervisor Trap Handling
-  // todo
-  // sstauts < mstatus
-  // sip, sie < mip, mie
-  val stvec     = Reg(UInt(sxLen.W))
-  val sscratch  = Reg(UInt(sxLen.W))
-  val sepc      = Reg(UInt(sxLen.W))
-  val scause    = Reg(UInt(sxLen.W))
-  val stval     = Reg(UInt(sxLen.W))
-  val satp      = RegInit(0.U.asTypeOf(new Satp32))
+  val sscratch = Reg(UInt(sxLen.W))
+  val sepc     = Reg(UInt(sxLen.W))
+  val scause   = Reg(UInt(sxLen.W))
+  val stval    = Reg(UInt(sxLen.W))
+  // sip is subset of mip
+  // Supervisor Protection and Translation
+  val satp     = RegInit(0.U.asTypeOf(new Satp32))
 
   // User Counter/Timers
+  // All of their privilege is URO
   val cycle   = RegInit(0.U(64.W))
   val time    = RegInit(0.U(64.W))
   val timecmp = Reg(UInt(64.W))
   val instret = RegInit(0.U(64.W))
 
-  // misc
+  // counters
   when(io.inst_ret)(instret := instret + 1.U)
   time                      := time + 1.U // cycle?
   cycle                     := cycle + 1.U
   val csr_addr = io.inst(31, 20)
-
-  // exception
-  val misalignedLoad  = io.mem_en && !io.mem_rw && MuxLookup(
-    io.mem_sz,
-    false.B,
-    Seq(MEM_HU -> io.mem_addr(0), MEM_H -> io.mem_addr(0), MEM_W -> io.mem_addr(1, 0).orR),
-  )
-  val misalignedStore = io.mem_en && io.mem_rw && MuxLookup(
-    io.mem_sz,
-    false.B,
-    Seq(MEM_H -> io.mem_addr(0), MEM_W -> io.mem_addr(1, 0).orR),
-  )
-  val misalignedFetch = io.jbr && io.jbr_target(1, 0).orR // C
-
-  val pageFaultFetch = io.inst_page_fault
-  val pageFaultLoad  = !io.mem_rw && io.data_page_fault // io.mem_en?
-  val pageFaultStore = io.mem_rw && io.data_page_fault  // io.mem_en?
-
-  val isEcall :: isEbreak :: isMRet :: isSRet :: isSFenceVMA :: Nil =
-    DecodeLogic(
-      io.inst,
-      Seq.fill(5)(N),
-      Seq(
-        ECALL      -> Seq(Y, N, N, N, N),
-        EBREAK     -> Seq(N, Y, N, N, N),
-        MRET       -> Seq(N, N, Y, N, N),
-        SRET       -> Seq(N, N, N, Y, N),
-        SFENCE_VMA -> Seq(N, N, N, N, Y),
-      ),
-    ).map(_.asBool)
-
-  val illegalInstruction =
-    io.inst_ilgl || mstatus.tvm && (isSFenceVMA || csr_addr === CSRs.satp.U) || mstatus.tsr && isSRet
-  val exception          =
-    illegalInstruction || misalignedFetch || misalignedLoad || misalignedStore || isEcall || isEbreak || pageFaultLoad || pageFaultStore || pageFaultFetch
-
-  // interrupt
-  mip.stip := time >= timecmp
-  mip.mtip := time >= timecmp
-  val s_software_int = mie.ssie && mip.ssip
-  val m_software_int = mie.msie && mip.ssip
-  val s_timer_int    = mie.stie && mip.stip
-  val m_timer_int    = mie.mtie && mip.mtip
-  val s_external_int = mie.seie && mip.seip
-  val m_external_int = mie.meie && mip.meip
-  val _interrupt     = s_software_int || m_software_int || s_timer_int || m_timer_int || s_external_int || m_external_int
-  val interrupt_m    = mstatus.mie && _interrupt
-  val interrupt_s    = mstatus.sie && _interrupt
 
   // read
   val csrFile    = Seq(
@@ -172,6 +131,66 @@ class CSR(implicit c: Config) extends CoreModule {
   val ren        = cmd_s_or_c || cmd_w && !io.rdIsX0 // 不过有必要么？读取唯一的副作用就是写寄存器堆，rd == x0，本来也没法写啊？
   io.out := Mux(ren, Lookup(csr_addr, 0.U, csrFile), 0.U)
 
+  // write
+  val wen   = cmd_w || cmd_s_or_c && !io.rs1IsX0
+  val wdata =
+    MuxLookup(
+      io.cmd,
+      0.U,
+      Seq(CSR_CMD_W -> io.in, CSR_CMD_S -> (io.out | io.in), CSR_CMD_C -> (io.out & (~io.in).asUInt)),
+    )
+
+  // exception
+  val misalignedLoad  = io.mem_en && !io.mem_rw && MuxLookup(
+    io.mem_sz,
+    false.B,
+    Seq(MEM_HU -> io.mem_addr(0), MEM_H -> io.mem_addr(0), MEM_W -> io.mem_addr(1, 0).orR),
+  )
+  val misalignedStore = io.mem_en && io.mem_rw && MuxLookup(
+    io.mem_sz,
+    false.B,
+    Seq(MEM_H -> io.mem_addr(0), MEM_W -> io.mem_addr(1, 0).orR),
+  )
+  val misalignedFetch = io.jbr && io.jbr_target(1, 0).orR // C
+
+  val pageFaultFetch = io.inst_page_fault
+  val pageFaultLoad  = !io.mem_rw && io.data_page_fault // io.mem_en?
+  val pageFaultStore = io.mem_rw && io.data_page_fault  // io.mem_en?
+
+  val isEcall :: isEbreak :: isMret :: isSret :: isSfenceVMA :: Nil =
+    DecodeLogic(
+      io.inst,
+      Seq.fill(5)(N),
+      Seq(
+        ECALL      -> Seq(Y, N, N, N, N),
+        EBREAK     -> Seq(N, Y, N, N, N),
+        MRET       -> Seq(N, N, Y, N, N),
+        SRET       -> Seq(N, N, N, Y, N),
+        SFENCE_VMA -> Seq(N, N, N, N, Y),
+      ),
+    ).map(_.asBool)
+
+  val wrong_csr =
+    isUser && ((wen && csr_addr === CSRs.cycle.U) || (wen || ren) && csr_addr === CSRs.mstatus.U) // todo complete
+
+  val illegalInstruction =
+    io.inst_ilgl || mstatus.tvm && (isSfenceVMA || csr_addr === CSRs.satp.U) || mstatus.tsr && isSret || wrong_csr
+  val exception          =
+    illegalInstruction || misalignedFetch || misalignedLoad || misalignedStore || isEcall || isEbreak || pageFaultLoad || pageFaultStore || pageFaultFetch
+
+  // interrupt
+  mip.stip := time >= timecmp
+  mip.mtip := time >= timecmp
+  val s_software_int = mie.ssie && mip.ssip
+  val m_software_int = mie.msie && mip.ssip
+  val s_timer_int    = mie.stie && mip.stip
+  val m_timer_int    = mie.mtie && mip.mtip
+  val s_external_int = mie.seie && mip.seip
+  val m_external_int = mie.meie && mip.meip
+  val _interrupt     = s_software_int || m_software_int || s_timer_int || m_timer_int || s_external_int || m_external_int
+  val interrupt_m    = mstatus.mie && _interrupt
+  val interrupt_s    = mstatus.sie && _interrupt
+
   // misc
   val cause_int  = MuxCase(
     1.U,
@@ -204,16 +223,11 @@ class CSR(implicit c: Config) extends CoreModule {
 
   // io
   io.xcpt  := interrupt_m || interrupt_s || exception
-  io.xret  := !io.xcpt && (isMRet || isSRet) // 不是xcpt可以隐藏到其他Mux的顺序里，但为了清楚放在这
+  io.xret  := !io.xcpt && (isMret || isSret) // 不是xcpt可以隐藏到其他Mux的顺序里，但为了清楚放在这
   io.xtvec := Mux(deleg2S, stvec, mtvec)
-  io.xepc  := Mux(isSRet, sepc, mepc)
+  io.xepc  := Mux(isSret, sepc, mepc)
   io.satp  := satp
   io.PRV   := PRV
-
-  // write
-  val wen   = cmd_w || cmd_s_or_c && !io.rs1IsX0
-  val wdata =
-    MuxLookup(io.cmd, 0.U, Seq(CSR_CMD_W -> io.in, CSR_CMD_S -> (io.out | io.in), CSR_CMD_C -> (io.out & ~io.in)))
 
   when(io.xcpt) {
     when(deleg2S) {
@@ -233,13 +247,13 @@ class CSR(implicit c: Config) extends CoreModule {
       mstatus.mpp  := PRV
       PRV          := PRV_M
     }
-  }.elsewhen(isMRet) {
+  }.elsewhen(isMret) {
     mstatus.mie := mstatus.mpie
     PRV         := mstatus.mpp
     // spec说xPIE is set to 1，但设成1以后rv32ui-p-illegal会在mret后卡住
     // mstatus.mpie := 1.U
     mstatus.mpp := PRV_U
-  }.elsewhen(isSRet) {
+  }.elsewhen(isSret) {
     mstatus.sie := mstatus.spie
     PRV         := mstatus.spp
     // mstatus.spie := 1.U

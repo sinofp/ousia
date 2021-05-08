@@ -2,7 +2,7 @@ package core
 
 import chipsalliance.rocketchip.config.Config
 import chisel3._
-import chisel3.util.{MuxCase, MuxLookup}
+import chisel3.util.MuxCase
 import ALU._
 import Consts._
 

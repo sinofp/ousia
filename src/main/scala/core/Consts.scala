@@ -28,6 +28,7 @@ object Consts {
   val FMT_WIP = 8.U // 表示目前不支持这条指令，但之后要支持
 
   val SZ_MEM_SZ = 3
+  val MEM_DC    = BitPat.dontCare(SZ_MEM_SZ)
   val MEM_B     = 0.U
   val MEM_H     = 1.U
   val MEM_W     = 2.U
@@ -52,10 +53,7 @@ object Consts {
   val PRV_S = "b01".U
   val PRV_M = "b11".U
 
-  val AMO_ADD_W_FUNCT5  = "b00000".U
-  val AMO_XOR_W_FUNCT5  = "b00100".U
-  val AMO_OR_W_FUNCT5   = "b01000".U
-  val AMO_AND_W_FUNCT5  = "b01100".U
+  // todo replace them with function after BitPat#toString is released
   val AMO_MIN_W_FUNCT5  = "b10000".U
   val AMO_MAX_W_FUNCT5  = "b10100".U
   val AMO_MINU_W_FUNCT5 = "b11000".U
