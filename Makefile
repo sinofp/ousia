@@ -47,14 +47,26 @@ FIRMWARE_RVTEST_OBJS = $(addprefix firmware/, $(addsuffix .o, \
 		       ))
 
 # [test]
+.PHONY: test
 test: build $(RVTEST_VERILOG)
 	pytest tb/test.py $(PYTEST_EXTRA_ARGS)
 
+.PHONY: test-inst
 test-inst: build $(RVTEST_VERILOG)
 	INSTS='$(TEST_INSTS)' pytest tb/test.py -k inst $(PYTEST_EXTRA_ARGS)
 
+.PHONY: test-misc
 test-misc: build meminit/firmware.verilog
 	pytest tb/test.py -k 'not inst' $(PYTEST_EXTRA_ARGS)
+
+.PHONY = debug
+FILE = '???'
+debug: build meminit/$(FILE).verilog meminit/$(FILE).dump
+	cp tb/cocotb_top.v tb/cocotb_top_debug.v
+	sed -i 's|readmemh.*|readmemh("$(PWD)/meminit/$(FILE).verilog", ram.mem);|' tb/cocotb_top_debug.v
+	DUMPFILE=$(PWD)/meminit/$(FILE).dump make -C tb || true
+	rm tb/cocotb_top_debug.v
+	mv tb/log* .
 
 meminit:
 	mkdir meminit
@@ -68,8 +80,6 @@ meminit/firmware.verilog: firmware/firmware meminit
 	$(TOOLCHAIN_PREFIX)objcopy $< -O verilog meminit/firmware.verilog
 	sed -i 's|@8|@0|g' $@
 	$(TOOLCHAIN_PREFIX)objdump -D $< > meminit/firmware.dump
-
-get-meminit: $(RVTEST_VERILOG) meminit/firmware.verilog
 
 # [tools]
 verilator:
@@ -133,10 +143,12 @@ build: ousia.core Naive.v
 	fusesoc --cores-root=. run ousia
 
 # [board]
+.PHONY: cyc10
 cyc10: firmware/firmware00.hex build
 	fusesoc --cores-root=. run --target=cyc10 ousia
 
 # [misc]
+.PHONY: clean
 clean:
 	-rm -r meminit firmware/firmware* __pycache__ build
 	cocotb-clean
@@ -145,4 +157,3 @@ clean:
 .bsp:
 	mill mill.bsp.BSP/install
 
-.PHONY: cyc10 clean test-inst test-misc test get-meminit

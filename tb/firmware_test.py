@@ -1,6 +1,5 @@
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import FallingEdge
 from cocotb.triggers import FallingEdge, Timer
 
 one_second = 1000_000_000  # ns
@@ -34,7 +33,7 @@ class UART:
 
 @cocotb.test()
 async def firmware_test(dut):
-    clock = Clock(dut.clk, one_second / clk_rate, units="ns")
+    clock = Clock(dut.clk, one_second // clk_rate, units="ns")
     cocotb.fork(clock.start())
 
     dut.reset <= 1

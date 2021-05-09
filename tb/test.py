@@ -20,7 +20,8 @@ includes = [
 
 
 @contextmanager
-def prepare(elf_dir, elf_name):
+def prepare(elf_name):
+    """change readmemh argument to meminit/elf_name.verilog"""
     top_v = f"tb/cocotb_top_{elf_name}.v"
     memfile = f"{getcwd()}/meminit/{elf_name}.verilog"
     dumpfile = f"{getcwd()}/meminit/{elf_name}.dump"
@@ -39,8 +40,7 @@ def prepare(elf_dir, elf_name):
 @pytest.mark.parametrize("inst", insts)
 @pytest.mark.timeout(90)
 def test_inst(inst):
-    elf_dir = "/usr/riscv32-unknown-elf/share/riscv-tests/isa"
-    with prepare(elf_dir, inst) as top_v:
+    with prepare(inst) as top_v:
         simulator.run(
             verilog_sources=["build/ousia_0/src/ousia_0/Naive.v", "naive_soc.v", top_v],
             includes=includes,
@@ -52,7 +52,7 @@ def test_inst(inst):
 
 
 def test_firmware():
-    with prepare("firmware", "firmware") as top_v:
+    with prepare("firmware") as top_v:
         simulator.run(
             verilog_sources=["build/ousia_0/src/ousia_0/Naive.v", "naive_soc.v", top_v],
             includes=includes,
