@@ -1,0 +1,44 @@
+/dts-v1/;
+/ {
+    // 3.2  Root node
+    #address-cells = <1>;
+    #size-cells = <1>;
+    model = "sinofp,naive-0"; // manufacturer,model-number
+    compatible = "sinofp,naive"; // manufacturer,model
+
+    cpus {
+        // 3.6/cpusNode Properties
+        #address-cells = <1>;
+        #size-cells = <0>;
+
+        cpu@0 {
+            device_type = "cpu";
+            reg = <0>; // hart ID
+            clock-frequency = <5000000>;
+            // timebase-frequency = <>; TODO
+            status = "okay";
+            compatible = "riscv";
+            mmu-type = "riscv,sv32";
+            riscv,isa = "rv32ima";
+        };
+    };
+
+    memory@80000000 {
+        // 3.4/memorynode
+        #address-cells = <1>;
+        #size-cells = <1>;
+        device_type = "memory";
+        reg = <0x80000000 0x7fffffff>;
+    };
+
+    uart@10000000 {
+        // 4.2.2  National Semiconductor 16450/16550 Compatible UART Requirements
+        #address-cells = <1>;
+        #size-cells = <1>;
+        compatible = "ns16550a";
+        clock-frequency = <5000000>; // Hz
+        current-speed = <38400>; // Baud rate
+        reg = <0x10000000 0x1000>; // addr
+        reg-shift = <2>; // 接地址的时候把后两位忽略了，所以每个都要乘以4。和uart模块只支持8位的、wishbone的sel有关
+    };
+};

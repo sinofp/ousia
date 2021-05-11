@@ -71,15 +71,23 @@ debug: build meminit/$(FILE).verilog meminit/$(FILE).dump
 meminit:
 	mkdir meminit
 
+define gen_meminit
+$(TOOLCHAIN_PREFIX)objcopy $< -O verilog $@
+sed -i 's|@8|@0|g' $@
+$(TOOLCHAIN_PREFIX)objdump -D $< > $(basename $@).dump
+endef
+
 meminit/rv32%.verilog: $(RVTEST_ISA_PATH)/rv32% meminit
-	$(TOOLCHAIN_PREFIX)objcopy $< -O verilog $@
-	sed -i 's|@8|@0|g' $@
-	cp $<.dump meminit
+	$(gen_meminit)
 
 meminit/firmware.verilog: firmware/firmware meminit
-	$(TOOLCHAIN_PREFIX)objcopy $< -O verilog meminit/firmware.verilog
-	sed -i 's|@8|@0|g' $@
-	$(TOOLCHAIN_PREFIX)objdump -D $< > meminit/firmware.dump
+	$(gen_meminit)
+
+meminit/fw_payload.verilog: tool/opensbi/build/platform/ousia/firmware/fw_payload.elf meminit
+	$(gen_meminit)
+
+meminit/bbl.verilog: tool/pk/build/bbl meminit
+	$(gen_meminit)
 
 # [tools]
 verilator:
@@ -107,6 +115,17 @@ riscv-tests:
 		sed -i 's|rv32mi,-march=rv32g|rv32mi,-march=rv32if|' isa/Makefile && \
 		sed -i 's/echo .* | md5/echo rv32ui-v-sw | md5/' isa/Makefile && \
 		make install RISCV_PREFIX=$(TOOLCHAIN_PREFIX)
+
+tool/opensbi/build:
+	cd tool/opensbi && \
+		make -j$$(nproc) CROSS_COMPILE=$(TOOLCHAIN_PREFIX) PLATFORM=ousia PLATFORM_RISCV_ISA=rv32ima
+
+tool/pk/build:
+	cd tool/pk && \
+		mkdir build && \
+		cd build && \
+		PATH="$(RISCV)/bin:$$PATH" ../configure --prefix=$(RISCV) --host=riscv32-unknown-elf --with-arch=rv32ima --with-dts=$(PWD)/firmware/naive.dts --enable-logo && \
+		PATH="$(RISCV)/bin:$$PATH" make -j$$(nproc)
 
 # [firmware]
 firmware/firmware: firmware/start.o firmware/linker.ld $(FIRMWARE_RVTEST_OBJS)
