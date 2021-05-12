@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<preferences>
+ <debug showDebugMenu="0" />
+ <systemtable filter="All Interfaces">
+  <columns>
+   <connections preferredWidth="63" />
+   <irq preferredWidth="34" />
+  </columns>
+ </systemtable>
+ <library
+   expandedCategories="Library/Memory Interfaces and Controllers,Project,Library/University Program/Clock,Library/Memory Interfaces and Controllers/SDRAM,Library,Library/University Program,Library/Memory Interfaces and Controllers/Memory Interfaces with UniPHY" />
+ <window width="1920" height="1038" x="0" y="42" />
+</preferences>

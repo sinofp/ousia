@@ -7,9 +7,9 @@ generate:
     parameters:
       masters:
         ibus:
-          slaves: [ram]
+          slaves: [ram, sdram]
         dbus:
-          slaves: [ram, uart, gpio]
+          slaves: [ram, sdram, uart, gpio]
       slaves:
         ram:
           offset: 0x80000000
@@ -19,6 +19,9 @@ generate:
           size: 0x10000000
         gpio:
           offset: 0x20000000
+          size: 0x10000000
+        sdram:
+          offset: 0x30000000
           size: 0x10000000
 
 filesets:
@@ -36,11 +39,14 @@ filesets:
     files:
       - board/step-cyc10/pin.tcl: { file_type: tclSource }
       - board/step-cyc10/timing.sdc: { file_type: SDC }
-      - board/step-cyc10/pll.qip: { file_type: QIP }
-      - board/step-cyc10/pll.v: { file_type: verilogSource }
-      - board/step-cyc10/ram.qip: { file_type: QIP }
-      - board/step-cyc10/ram.v: { file_type: verilogSource }
       - board/step-cyc10/cyc10_top.v: { file_type: verilogSource }
+      - board/step-cyc10/wb32_avalon16.v: { file_type: verilogSource }
+      - board/step-cyc10/ip/pll/pll.qip: { file_type: QIP }
+      - board/step-cyc10/ip/pll/pll.v: { file_type: verilogSource }
+      - board/step-cyc10/ip/ram/ram.qip: { file_type: QIP }
+      - board/step-cyc10/ip/ram/ram.v: { file_type: verilogSource }
+      - board/step-cyc10/ip/sdram/sdram.qsys: { file_type: QSYS }
+    depend: [wb_avalon_bridge]
 
 targets:
   default:

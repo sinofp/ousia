@@ -41,9 +41,7 @@ RVTEST_VERILOG = $(addprefix meminit/, $(addsuffix .verilog, $(TEST_INSTS)))
 FIRMWARE_RVTEST_OBJS = $(addprefix firmware/, $(addsuffix .o, \
 		       addi add andi and auipc beq bge \
 		       bgeu blt bltu bne jalr jal lb \
-		       lh lui lw ori or sb sh \
-		       slli sll slti sltiu slt sltu srai \
-		       sra srli srl sub sw xori xor \
+		       lh lui lw ori or sdram_test \
 		       ))
 
 # [test]
@@ -150,6 +148,9 @@ firmware/start.o: firmware/start.S
 firmware/ram_test.o: firmware/ram_test.py
 	python $< | $(TOOLCHAIN_PREFIX)gcc -c -x assembler-with-cpp -march=rv32i -Ifirmware -DTEST_NAME=ram_test -o $@ -
 
+firmware/sdram_test.o: firmware/sdram.S
+	$(TOOLCHAIN_PREFIX)gcc -c -x assembler-with-cpp -march=rv32i -Ifirmware -DTEST_NAME=sdram_test -o $@ $<
+
 firmware/%.o: tool/riscv-tests/isa/rv32ui/%.S firmware/riscv_test.h
 	$(TOOLCHAIN_PREFIX)gcc -c -march=rv32i -Ifirmware -Itool/riscv-tests/isa/macros/scalar -DTEST_NAME=$(notdir $(basename $@)) -o $@ $<
 
@@ -163,7 +164,7 @@ build: ousia.core Naive.v
 
 # [board]
 .PHONY: cyc10
-cyc10: firmware/firmware00.hex build
+cyc10: firmware/firmware00.hex
 	fusesoc --cores-root=. run --target=cyc10 ousia
 
 # [misc]
