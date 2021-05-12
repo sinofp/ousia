@@ -158,7 +158,7 @@ uart_init:
     li t0, 0
     sb t0, DLB2(a0)
 
-    li t0, 8
+    li t0, 11
     sb t0, DLB1(a0)
 
     li t0, 3

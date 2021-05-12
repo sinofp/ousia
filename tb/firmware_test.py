@@ -3,7 +3,7 @@ from cocotb.clock import Clock
 from cocotb.triggers import FallingEdge, Timer
 
 one_second = 1000_000_000  # ns
-clk_rate = 5_000_000  # Hz
+clk_rate = 20_000_000  # Hz
 
 
 class UART:
@@ -40,7 +40,7 @@ async def firmware_test(dut):
     await FallingEdge(dut.clk)
     dut.reset <= 0
 
-    fake_uart = UART(38400)
+    fake_uart = UART(115200)
 
     await FallingEdge(dut.clk)
     assert dut.gpio_o == 0, "gpio_o should be zero at beginning!"
