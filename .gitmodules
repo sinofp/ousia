@@ -1,9 +1,0 @@
-[submodule "api-config-chipsalliance"]
-	path = tool/api-config-chipsalliance
-	url = https://github.com/chipsalliance/api-config-chipsalliance.git
-[submodule "verilator"]
-	path = tool/verilator
-	url = https://github.com/verilator/verilator.git
-[submodule "tool/riscv-tests"]
-	path = tool/riscv-tests
-	url = https://github.com/riscv/riscv-tests.git

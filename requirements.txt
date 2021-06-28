@@ -1,4 +1,0 @@
-fusesoc
-cocotb-test
-pytest-xdist[psutil]
-pytest-timeout
