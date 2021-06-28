@@ -5,9 +5,9 @@ import mill.scalalib.scalafmt.ScalafmtModule
 val sv = "2.12.13"
 
 object ousia extends ScalaModule with ScalafmtModule {
-  def scalaVersion   = sv
+  def scalaVersion = sv
 
-  // def moduleDeps = Seq(`api-config-chipsalliance`)
+  def moduleDeps = Seq(`api-config-chipsalliance`)
 
   def ivyDeps = Agg(ivy"edu.berkeley.cs::chisel3:3.4.+")
 
@@ -25,8 +25,8 @@ object ousia extends ScalaModule with ScalafmtModule {
   )
 }
 
-// object `api-config-chipsalliance` extends ScalaModule {
-//   def millSourcePath = os.pwd / "tool" / "api-config-chipsalliance" / "design" / "craft"
-//   def scalaVersion   = sv
-// }
+object `api-config-chipsalliance` extends ScalaModule {
+  def millSourcePath = os.pwd / "3rd_party" / "api-config-chipsalliance" / "design" / "craft"
+  def scalaVersion   = sv
+}
 // vim:ft=scala
