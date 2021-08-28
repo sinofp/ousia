@@ -1,8 +1,7 @@
-import chipsalliance.rocketchip.config.Parameters
 import chisel3._
 import chisel3.util.log2Up
 
-class ALUGeneric(ops: Seq[(UInt, (UInt, UInt) => UInt)])(implicit p: Parameters) extends CoreModule {
+class ALUGeneric(ops: Seq[(UInt, (UInt, UInt) => UInt)]) extends CoreModule {
   val io = IO(new Bundle() {
     val in1 = Input(UInt(xLen.W))
     val in2 = Input(UInt(xLen.W))
@@ -18,7 +17,7 @@ class ALUGeneric(ops: Seq[(UInt, (UInt, UInt) => UInt)])(implicit p: Parameters)
   io.out := result(xLen - 1, 0)
 }
 
-class ALU(implicit p: Parameters)
+class ALU
     extends ALUGeneric({
       import Consts._
       Seq(
@@ -39,7 +38,7 @@ class ALU(implicit p: Parameters)
       )
     })
 
-class AMOALU(implicit p: Parameters)
+class AMOALU
     extends ALUGeneric({
       import Consts._
       Seq(

@@ -1,3 +1,0 @@
-[submodule "3rd_party/api-config-chipsalliance"]
-	path = 3rd_party/api-config-chipsalliance
-	url = gh:chipsalliance/api-config-chipsalliance

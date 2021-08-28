@@ -1,13 +1,12 @@
-import chipsalliance.rocketchip.config.{Field, Parameters}
 import chisel3._
 
 trait HasCoreConfigs {
-  implicit val p: Parameters
-  val xLen = p(XLEN)
+  val xLen: Int = XLEN.into
 }
 
-abstract class CoreModule(implicit val p: Parameters) extends Module with HasCoreConfigs
-abstract class CoreBundle(implicit val p: Parameters) extends Bundle with HasCoreConfigs
+abstract class CoreModule extends Module with HasCoreConfigs
+abstract class CoreBundle extends Bundle with HasCoreConfigs
 
+sealed abstract class Field[T](val into: T)
 case object XLEN      extends Field[Int](32)
 case object DRAM_BASE extends Field[UInt]("h80000000".U)

@@ -15,7 +15,7 @@ object Consts {
   val A2_IMM      = 2.U
 
   val SZ_ALU_FN = 4
-  val ALU_X     = BitPat("b????")
+  val ALU_X     = BitPat.dontCare(SZ_ALU_FN)
   val ALU_ADD   = 0.U
   val ALU_SL    = 1.U
   val ALU_SEQ   = 2.U
@@ -38,8 +38,4 @@ object Consts {
   val ALU_MULH   = ALU_SL
   val ALU_MULHSU = ALU_SEQ
   val ALU_MULHU  = ALU_SNE
-
-  val X = BitPat("b?")
-  val N = BitPat("b0")
-  val Y = BitPat("b1")
 }
