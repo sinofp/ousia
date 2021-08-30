@@ -14,6 +14,8 @@ object ousia extends ScalaModule with ScalafmtModule {
 
   override def ivyDeps = Agg(ivy"edu.berkeley.cs::chisel3:3.5-SNAPSHOT")
 
+  override def scalacPluginIvyDeps = Agg(ivy"edu.berkeley.cs:::chisel3-plugin:3.5-SNAPSHOT")
+
   override def scalacOptions = super.scalacOptions() ++ Seq(
     // Required options for Chisel code
     "-Xsource:2.11",
@@ -26,4 +28,9 @@ object ousia extends ScalaModule with ScalafmtModule {
     "-language:implicitConversions",
     "-language:postfixOps",
   )
+
+  object test extends Tests with ScalafmtModule {
+    override def ivyDeps = Agg(ivy"edu.berkeley.cs::chiseltest:latest.integration")
+    override def testFramework = "org.scalatest.tools.Framework"
+  }
 }
