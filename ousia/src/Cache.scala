@@ -1,5 +1,6 @@
 import chisel3._
-import chisel3.util.{is, log2Up, switch, Enum}
+import chisel3.util.experimental.InlineInstance
+import chisel3.util.{is, log2Up, switch, Counter, Enum, RegEnable}
 
 class CpuReq extends CoreBundle {
   val addr  = UInt(32.W) // 34?
@@ -25,7 +26,7 @@ class MemRes(wordPerLine: Int) extends CoreBundle {
   val ready = Bool()
 }
 
-class Cache(linePerWay: Int, wordPerLine: Int = 4) extends CoreModule {
+class CacheDM(linePerWay: Int, wordPerLine: Int) extends CoreModule {
   val indexLen       = log2Up(linePerWay)
   val blockOffsetLen = log2Up(wordPerLine)
   val byteOffsetLen  = 2
@@ -135,4 +136,22 @@ class Cache(linePerWay: Int, wordPerLine: Int = 4) extends CoreModule {
       state        := allocate
     })
   }
+}
+
+class Cache(linePerWay: Int, wordPerLine: Int = 4) extends CoreModule {
+  val cpuReq = IO(Input(new CpuReq))
+  val cpuRes = IO(Output(new CpuRes))
+  val memReq = IO(Output(new MemReq(wordPerLine)))
+  val memRes = IO(Input(new MemRes(wordPerLine)))
+
+  val c = Module(new CacheDM(linePerWay, wordPerLine) with InlineInstance)
+
+  c.cpuReq := cpuReq
+  c.memRes := memRes
+  memReq   := c.memReq
+
+  val data = RegEnable(c.cpuRes.data, c.cpuRes.ready)
+  cpuRes.ready := c.cpuRes.ready
+  cpuRes.data  := Mux(c.cpuRes.ready, c.cpuRes.data, data) // fix output data
+
 }

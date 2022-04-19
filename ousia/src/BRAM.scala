@@ -20,7 +20,8 @@ class BRAM[T <: Data](depth: Int, dataType: T) extends Module {
   val write = IO(Input(dataType))  // din
   val read  = IO(Output(dataType)) // dout
 
-  val mem  = Reg(Vec(depth, dataType))
+//  val mem  = Reg(Vec(depth, dataType))
+  val mem  = RegInit(VecInit(Seq.fill(depth)(0.U.asTypeOf(dataType))))
   val data = Reg(dataType)
 
   when(we) {
